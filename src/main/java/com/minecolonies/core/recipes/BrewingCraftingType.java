@@ -1,12 +1,21 @@
 package com.minecolonies.core.recipes;
 
 import com.minecolonies.api.MinecoloniesAPIProxy;
+import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.compatibility.ICompatibilityManager;
 import com.minecolonies.api.crafting.GenericRecipe;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.crafting.registry.CraftingType;
+import com.minecolonies.api.inventory.container.ContainerCraftingBrewingstand;
 import com.minecolonies.api.util.constant.ToolType;
+import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
@@ -20,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -69,5 +79,32 @@ public class BrewingCraftingType extends CraftingType
         }
 
         return recipes;
+    }
+
+    @NotNull
+    @Override
+    public MenuProvider getMenuProvider(IBuilding building, AbstractCraftingBuildingModule module) {
+        return new MenuProvider()
+        {
+            @NotNull
+            @Override
+            public Component getDisplayName()
+            {
+                return Component.literal("Brewing Crafting GUI");
+            }
+
+            @NotNull
+            @Override
+            public AbstractContainerMenu createMenu(final int id, @NotNull final Inventory inv, @NotNull final Player player)
+            {
+                return new ContainerCraftingBrewingstand(id, inv, building.getID(), module.getProducer().getRuntimeID());
+            }
+        };
+    }
+
+    @NotNull
+    @Override
+    public Consumer<FriendlyByteBuf> populateMenuBuffer(IBuilding building, AbstractCraftingBuildingModule module) {
+        return buffer -> new FriendlyByteBuf(buffer.writeBlockPos(building.getID()).writeInt(module.getProducer().getRuntimeID()));
     }
 }

@@ -20,7 +20,7 @@ import java.util.function.Predicate;
  * @param <C> the crafting inventory type
  * @param <T> the recipe type
  */
-public class RecipeCraftingType<C extends Container, T extends Recipe<C>> extends CraftingType
+public abstract class RecipeCraftingType<C extends Container, T extends Recipe<C>> extends CraftingType
 {
     private final RecipeType<T> recipeType;
     private final Predicate<T> predicate;

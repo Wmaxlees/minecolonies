@@ -1,7 +1,11 @@
 package com.minecolonies.api.crafting.registry;
 
+import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.crafting.IGenericRecipe;
+import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -9,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 /**
  * Class to represent the different types of crafting supported by MineColonies
@@ -47,4 +52,10 @@ public abstract class CraftingType
     {
         return registryName.hashCode();
     }
+
+    @NotNull
+    public abstract MenuProvider getMenuProvider(IBuilding building, AbstractCraftingBuildingModule module);
+
+    @NotNull
+    public abstract Consumer<FriendlyByteBuf> populateMenuBuffer(IBuilding building, AbstractCraftingBuildingModule module);
 }

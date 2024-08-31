@@ -4,13 +4,22 @@ import com.ldtteam.domumornamentum.block.IMateriallyTexturedBlock;
 import com.ldtteam.domumornamentum.block.IMateriallyTexturedBlockComponent;
 import com.ldtteam.domumornamentum.recipe.ModRecipeTypes;
 import com.ldtteam.domumornamentum.recipe.architectscutter.ArchitectsCutterRecipe;
+import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.crafting.GenericRecipe;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.crafting.RecipeCraftingType;
+import com.minecolonies.api.inventory.container.ContainerCrafting;
 import com.minecolonies.api.util.constant.ToolType;
+import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.level.Level;
@@ -24,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class ArchitectsCutterCraftingType extends RecipeCraftingType<Container, ArchitectsCutterRecipe>
@@ -70,5 +80,32 @@ public class ArchitectsCutterCraftingType extends RecipeCraftingType<Container, 
         }
 
         return recipes;
+    }
+
+    // ArchitectsCutter doesn't use the standard OpenCraftingGUIMessage
+    // so we don't need this
+    @NotNull
+    @Override
+    public MenuProvider getMenuProvider(IBuilding building, AbstractCraftingBuildingModule module) {
+        return new MenuProvider()
+        {
+            @Override
+            public @Nullable AbstractContainerMenu createMenu(int i, Inventory inventory, Player player) {
+                return null;
+            }
+
+            @Override
+            public Component getDisplayName() {
+                return null;
+            }
+        };
+    }
+
+    // ArchitectsCutter doesn't use the standard OpenCraftingGUIMessage
+    // so we don't need this
+    @NotNull
+    @Override
+    public Consumer<FriendlyByteBuf> populateMenuBuffer(IBuilding building, AbstractCraftingBuildingModule module) {
+        return FriendlyByteBuf::new;
     }
 }

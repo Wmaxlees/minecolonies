@@ -6,6 +6,7 @@ import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.recipes.ArchitectsCutterCraftingType;
 import com.minecolonies.core.recipes.BrewingCraftingType;
+import com.minecolonies.core.recipes.PlayerDefinedCraftingType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraftforge.registries.DeferredRegister;
@@ -35,5 +36,7 @@ public final class ModCraftingTypesInitializer
             ModCraftingTypes.BREWING = DEFERRED_REGISTER.register(ModCraftingTypes.BREWING_ID.getPath(), BrewingCraftingType::new);
 
             ModCraftingTypes.ARCHITECTS_CUTTER = DEFERRED_REGISTER.register(ModCraftingTypes.ARCHITECTS_CUTTER_ID.getPath(), () -> new ArchitectsCutterCraftingType());
+
+            ModCraftingTypes.PLAYER_DEFINED = DEFERRED_REGISTER.register(ModCraftingTypes.PLAYER_DEFINED_ID.getPath(), PlayerDefinedCraftingType::new);
     }
 }

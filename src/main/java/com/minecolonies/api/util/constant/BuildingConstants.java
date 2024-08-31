@@ -108,6 +108,11 @@ public final class BuildingConstants
     public static final String MODULE_CUSTOM = "custom";
 
     /**
+     * Player defined crafting module type.
+     */
+    public static final String MODULE_PLAYER_DEFINED = "playerdefined";
+
+    /**
      * Private constructor to hide implicit public one.
      */
     private BuildingConstants()

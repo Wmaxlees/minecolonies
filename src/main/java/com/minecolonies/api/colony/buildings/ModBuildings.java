@@ -25,6 +25,7 @@ public final class ModBuildings
     public static final String HOME_ID           = "residence";
     public static final String LIBRARY_ID        = "library";
     public static final String LUMBERJACK_ID     = "lumberjack";
+    public static final String MACHINIST_ID      = "machinist";
     public static final String MINER_ID          = "miner";
     public static final String SAWMILL_ID        = "sawmill";
     public static final String SHEPHERD_ID       = "shepherd";
@@ -79,6 +80,7 @@ public final class ModBuildings
     public static RegistryObject<BuildingEntry> home;
     public static RegistryObject<BuildingEntry> library;
     public static RegistryObject<BuildingEntry> lumberjack;
+    public static RegistryObject<BuildingEntry> machinist;
     public static RegistryObject<BuildingEntry> miner;
     public static RegistryObject<BuildingEntry> sawmill;
     public static RegistryObject<BuildingEntry> shepherd;

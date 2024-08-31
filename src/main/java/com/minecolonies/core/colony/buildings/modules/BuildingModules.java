@@ -298,6 +298,28 @@ public class BuildingModules
       new BuildingEntry.ModuleProducer<>("glassblower_do_craft", () -> new BuildingGlassblower.DOCraftingModule(ModJobs.glassblower.get()),
         () -> () -> new DOCraftingModuleView(BuildingGlassblower.DOCraftingModule::getStaticIngredientValidator));
 
+    public static final BuildingEntry.ModuleProducer<
+            CraftingWorkerBuildingModule, WorkerBuildingModuleView>
+            MACHINIST_WORK =
+            new BuildingEntry.ModuleProducer<>(
+                    "machinist_work",
+                    () ->
+                            new CraftingWorkerBuildingModule(
+                                    ModJobs.machinist.get(),
+                                    Skill.Strength,
+                                    Skill.Focus,
+                                    true,
+                                    (b) -> 1,
+                                    Skill.Strength,
+                                    Skill.Focus),
+                    () -> WorkerBuildingModuleView::new);
+    public static final BuildingEntry.ModuleProducer<BuildingMachinist.CraftingModule, CraftingModuleView>
+            MACHINIST_CRAFT =
+            new BuildingEntry.ModuleProducer<>(
+                    "machinist_craft",
+                    () -> new BuildingMachinist.CraftingModule(ModJobs.machinist.get()),
+                    () -> CraftingModuleView::new);
+
     public static final BuildingEntry.ModuleProducer<CraftingWorkerBuildingModule,WorkerBuildingModuleView> MECHANIC_WORK         =
       new BuildingEntry.ModuleProducer<>("mechanic_work", () -> new CraftingWorkerBuildingModule(ModJobs.mechanic.get(), Skill.Knowledge, Skill.Agility, false, (b) -> 1),
         () -> WorkerBuildingModuleView::new);

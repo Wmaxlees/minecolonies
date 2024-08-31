@@ -6,6 +6,7 @@ import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.inventory.container.ContainerCrafting;
 import com.minecolonies.api.inventory.container.ContainerCraftingBrewingstand;
 import com.minecolonies.api.inventory.container.ContainerCraftingFurnace;
+import com.minecolonies.api.inventory.container.ContainerCraftingPlayerDefined;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import com.minecolonies.core.colony.buildings.views.AbstractBuildingView;
 import com.minecolonies.core.network.messages.server.AbstractBuildingServerMessage;
@@ -108,6 +109,25 @@ public class OpenCraftingGUIMessage extends AbstractBuildingServerMessage<IBuild
                     public AbstractContainerMenu createMenu(final int id, @NotNull final Inventory inv, @NotNull final Player player)
                     {
                         return new ContainerCraftingBrewingstand(id, inv, building.getID(), module.getProducer().getRuntimeID());
+                    }
+                }, buffer -> new FriendlyByteBuf(buffer.writeBlockPos(building.getID()).writeInt(module.getProducer().getRuntimeID())));
+            }
+            else if (module.canLearn(ModCraftingTypes.PLAYER_DEFINED.get()))
+            {
+                NetworkHooks.openScreen(player, new MenuProvider()
+                {
+                    @NotNull
+                    @Override
+                    public Component getDisplayName()
+                    {
+                        return Component.literal("Crafting GUI");
+                    }
+
+                    @NotNull
+                    @Override
+                    public AbstractContainerMenu createMenu(final int id, @NotNull final Inventory inv, @NotNull final Player player)
+                    {
+                        return new ContainerCraftingPlayerDefined(id, inv, building.getID(), module.getProducer().getRuntimeID());
                     }
                 }, buffer -> new FriendlyByteBuf(buffer.writeBlockPos(building.getID()).writeInt(module.getProducer().getRuntimeID())));
             }

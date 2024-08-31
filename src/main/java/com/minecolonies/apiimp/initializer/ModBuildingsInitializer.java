@@ -251,6 +251,15 @@ public final class ModBuildingsInitializer
           .addBuildingModuleProducer(STATS_MODULE)
           .createBuildingEntry());
 
+        ModBuildings.machinist = DEFERRED_REGISTER.register(ModBuildings.MACHINIST_ID, () -> new BuildingEntry.Builder()
+                .setBuildingBlock(ModBlocks.blockHutMachinist)
+                .setBuildingProducer(BuildingMachinist::new)
+                .setBuildingViewProducer(() -> EmptyView::new)
+                .setRegistryName(new ResourceLocation(Constants.MOD_ID, ModBuildings.MACHINIST_ID))
+                .addBuildingModuleProducer(MACHINIST_WORK)
+                .addBuildingModuleProducer(MACHINIST_CRAFT)
+                .createBuildingEntry());
+
         ModBuildings.miner = DEFERRED_REGISTER.register(ModBuildings.MINER_ID, () -> new BuildingEntry.Builder()
           .setBuildingBlock(ModBlocks.blockHutMiner)
           .setBuildingProducer(BuildingMiner::new)

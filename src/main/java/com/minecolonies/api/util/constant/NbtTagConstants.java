@@ -738,6 +738,12 @@ public final class NbtTagConstants
     public static final String TAG_RANDOM_KEY     = "randkey";
 
     /**
+     * Machinist tags
+     */
+    public static final String TAG_INPUT        = "machinistinput";
+    public static final String TAG_OUTPUT       = "machinistoutput";
+
+    /**
      * Private constructor to hide the implicit one.
      */
     private NbtTagConstants()

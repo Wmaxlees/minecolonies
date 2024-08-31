@@ -1118,4 +1118,32 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
             return MODULE_CUSTOM;
         }
     }
+
+    /** this module is for those who accept player defined recipes that aren't verified */
+    public abstract static class PlayerDefined extends AbstractCraftingBuildingModule {
+        /**
+         * Create a new module.
+         *
+         * @param jobEntry the entry of the job.
+         */
+        public PlayerDefined(final JobEntry jobEntry)
+        {
+            super(jobEntry);
+        }
+
+        @Override
+        public Set<CraftingType> getSupportedCraftingTypes() {
+            return Set.of(ModCraftingTypes.PLAYER_DEFINED.get());
+        }
+
+        @Override
+        public boolean isRecipeCompatible(@NotNull IGenericRecipe recipe) {
+            return true;
+        }
+
+        @Override
+        public @NotNull String getId() {
+            return MODULE_PLAYER_DEFINED;
+        }
+    }
 }

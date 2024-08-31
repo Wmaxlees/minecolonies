@@ -305,6 +305,12 @@ public final class ModJobsInitializer
                                                                                                         .setJobViewProducer(() -> CrafterJobView::new)
                                                                                                         .setRegistryName(ModJobs.CHEF_ID)
                                                                                                         .createJobEntry());
+
+        ModJobs.machinist = register(DEFERRED_REGISTER, ModJobs.MACHINIST_ID.getPath(), () -> new JobEntry.Builder()
+                .setJobProducer(JobMachinist::new)
+                .setJobViewProducer(() -> CrafterJobView::new)
+                .setRegistryName(ModJobs.MACHINIST_ID)
+                .createJobEntry());
     }
 
     /**

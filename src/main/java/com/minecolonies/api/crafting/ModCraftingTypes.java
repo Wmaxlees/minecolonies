@@ -13,12 +13,14 @@ public class ModCraftingTypes
     public static final ResourceLocation SMELTING_ID = new ResourceLocation(MOD_ID, "smelting");
     public static final ResourceLocation BREWING_ID = new ResourceLocation(MOD_ID, "brewing");
     public static final ResourceLocation ARCHITECTS_CUTTER_ID = new ResourceLocation("domum_ornamentum", "architects_cutter");
+    public static final ResourceLocation PLAYER_DEFINED_ID = new ResourceLocation(MOD_ID, "player_defined");
 
     public static RegistryObject<CraftingType> SMALL_CRAFTING;
     public static RegistryObject<CraftingType> LARGE_CRAFTING;
     public static RegistryObject<CraftingType> SMELTING;
     public static RegistryObject<CraftingType> BREWING;
     public static RegistryObject<CraftingType> ARCHITECTS_CUTTER;
+    public static RegistryObject<CraftingType> PLAYER_DEFINED;
 
     private ModCraftingTypes()
     {

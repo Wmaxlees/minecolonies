@@ -38,6 +38,7 @@ import com.minecolonies.api.util.MessageUtils.MessagePriority;
 import com.minecolonies.api.util.constant.HappinessConstants;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.client.gui.WindowInteraction;
@@ -106,7 +107,6 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
@@ -118,7 +118,6 @@ import java.time.Month;
 import java.util.*;
 
 import static com.minecolonies.api.research.util.ResearchConstants.*;
-import static com.minecolonies.api.util.ItemStackUtils.ISFOOD;
 import static com.minecolonies.api.util.constant.CitizenConstants.*;
 import static com.minecolonies.api.util.constant.Constants.*;
 import static com.minecolonies.api.util.constant.HappinessConstants.DAMAGE;
@@ -127,6 +126,7 @@ import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_COLONY_ID;
 import static com.minecolonies.api.util.constant.StatisticsConstants.DEATH;
 import static com.minecolonies.api.util.constant.Suppression.INCREMENT_AND_DECREMENT_OPERATORS_SHOULD_NOT_BE_USED_IN_A_METHOD_CALL_OR_MIXED_WITH_OTHER_OPERATORS_IN_AN_EXPRESSION;
 import static com.minecolonies.api.util.constant.TranslationConstants.*;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.ISFOOD;
 import static com.minecolonies.core.entity.ai.minimal.EntityAIInteractToggleAble.*;
 
 /**
@@ -169,10 +169,6 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      * The citizen item handler.
      */
     private       ICitizenItemHandler       citizenItemHandler;
-    /**
-     * The citizen inv handler.
-     */
-    private       ICitizenInventoryHandler  citizenInventoryHandler;
 
     /**
      * The citizen colony handler.
@@ -278,7 +274,6 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
         this.targetSelector = new CustomGoalSelector(this.targetSelector);
         this.citizenExperienceHandler = new CitizenExperienceHandler(this);
         this.citizenItemHandler = new CitizenItemHandler(this);
-        this.citizenInventoryHandler = new CitizenInventoryHandler(this);
         this.citizenColonyHandler = new CitizenColonyHandler(this);
         this.citizenJobHandler = new CitizenJobHandler(this);
         this.citizenSleepHandler = new CitizenSleepHandler(this);
@@ -1031,16 +1026,9 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
      */
     @Override
     @NotNull
-    public InventoryCitizen getInventoryCitizen()
+    public InventoryCitizen getInventory()
     {
         return getCitizenData().getInventory();
-    }
-
-    @Override
-    @NotNull
-    public IItemHandler getItemHandlerCitizen()
-    {
-        return getInventoryCitizen();
     }
 
     /**
@@ -1172,23 +1160,6 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     public ICitizenItemHandler getCitizenItemHandler()
     {
         return citizenItemHandler;
-    }
-
-    /**
-     * The Handler for all inventory related methods.
-     *
-     * @return the instance of the handler.
-     */
-    @Override
-    public ICitizenInventoryHandler getCitizenInventoryHandler()
-    {
-        return citizenInventoryHandler;
-    }
-
-    @Override
-    public void setCitizenInventoryHandler(final ICitizenInventoryHandler citizenInventoryHandler)
-    {
-        this.citizenInventoryHandler = citizenInventoryHandler;
     }
 
     /**
@@ -1606,7 +1577,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
                 }
                 else
                 {
-                    InventoryUtils.dropItemHandler(citizenData.getInventory(), level, (int) getX(), (int) getY(), (int) getZ());
+                    citizenData.getInventory().dropAllItems(level, new BlockPos((int) getX(), (int) getY(), (int) getZ()));
                 }
             }
 
@@ -1663,15 +1634,7 @@ public class EntityCitizen extends AbstractEntityCitizen implements IThreatTable
     @Override
     protected void dropEquipment()
     {
-        //Drop actual inventory
-        for (int i = 0; i < getInventoryCitizen().getSlots(); i++)
-        {
-            final ItemStack itemstack = getCitizenData().getInventory().getStackInSlot(i);
-            if (ItemStackUtils.getSize(itemstack) > 0)
-            {
-                citizenItemHandler.entityDropItem(itemstack);
-            }
-        }
+        getInventory().dropAllItems(level, new BlockPos((int) getX(), (int) getY(), (int) getZ()));
     }
 
     @NotNull

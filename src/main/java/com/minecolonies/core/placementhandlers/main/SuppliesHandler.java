@@ -7,10 +7,12 @@ import com.ldtteam.structurize.storage.StructurePacks;
 import com.ldtteam.structurize.util.PlacementSettings;
 import com.minecolonies.api.advancements.AdvancementTriggers;
 import com.minecolonies.api.items.ModItems;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.MineColonies;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -88,11 +90,13 @@ public class SuppliesHandler implements ISurvivalBlueprintHandler
         Predicate<ItemStack> searchPredicate = stack -> !stack.isEmpty();
         if (blueprintPath.contains("supplyship"))
         {
-            searchPredicate = searchPredicate.and(stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, new ItemStack(ModItems.supplyChest), true, false));
+            final Matcher supplyChestMatcher = new Matcher.Builder(ModItems.supplyChest).build();
+            searchPredicate = searchPredicate.and(stack -> ItemStackUtils.compareItemStack(supplyChestMatcher, stack));
         }
         if (blueprintPath.contains("supplycamp"))
         {
-            searchPredicate = searchPredicate.and(stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, new ItemStack(ModItems.supplyCamp), true, false));
+            final Matcher supplyCampMatcher = new Matcher.Builder(ModItems.supplyCamp).build();
+            searchPredicate = searchPredicate.and(stack -> ItemStackUtils.compareItemStack(supplyCampMatcher, stack));
         }
 
         if (isFreeInstantPlacementMH(player))
@@ -102,9 +106,9 @@ public class SuppliesHandler implements ISurvivalBlueprintHandler
                             stack -> stack.hasTag() && stack.getTag().get(PLACEMENT_NBT) != null && stack.getTag().getString(PLACEMENT_NBT).equals(INSTANT_PLACEMENT));
         }
 
-        final int slot = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(new InvWrapper(player.getInventory()), searchPredicate);
+        final ItemStack extracted = InventoryUtils.extractItemFromPlayerInventory(player, searchPredicate, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
 
-        if (slot != -1 && !ItemStackUtils.isEmpty(player.getInventory().removeItemNoUpdate(slot)))
+        if (!extracted.isEmpty())
         {
             if (player.getStats().getValue(Stats.ITEM_USED.get(ModItems.supplyChest)) < 1)
             {

@@ -11,10 +11,10 @@ import com.minecolonies.api.entity.ai.combat.threat.IThreatTableEntity;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import com.minecolonies.api.util.DamageSourceKeys;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.SoundUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.colony.jobs.AbstractJobGuard;
 import com.minecolonies.core.entity.ai.combat.AttackMoveAI;
@@ -105,15 +105,15 @@ public class KnightCombatAI extends AttackMoveAI<EntityCitizen>
      */
     protected IAIState attackProtect()
     {
-        final int shieldSlot = InventoryUtils.findFirstSlotInItemHandlerWith(user.getInventoryCitizen(), Items.SHIELD);
-        if (shieldSlot != -1 && target != null && target.isAlive() && nextAttackTime - user.level.getGameTime() >= MIN_TIME_TO_ATTACK &&
+        final Matcher matcher = new Matcher.Builder(Items.SHIELD).build();
+        if (user.getInventory().hasMatch(matcher) && target != null && target.isAlive() && nextAttackTime - user.level.getGameTime() >= MIN_TIME_TO_ATTACK &&
               user.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(SHIELD_USAGE) > 0)
         {
-            user.getCitizenItemHandler().setHeldItem(InteractionHand.OFF_HAND, shieldSlot);
+            user.getInventory().setHeldItem(InteractionHand.OFF_HAND, Items.SHIELD);
             user.startUsingItem(InteractionHand.OFF_HAND);
 
             // Apply the colony Flag to the shield
-            ItemStack shieldStack = user.getInventoryCitizen().getHeldItem(InteractionHand.OFF_HAND);
+            ItemStack shieldStack = user.getInventory().getHeldItem(InteractionHand.OFF_HAND);
             CompoundTag nbt = shieldStack.getOrCreateTagElement("BlockEntityTag");
             nbt.put(TAG_BANNER_PATTERNS, user.getCitizenColonyHandler().getColony().getColonyFlag());
 
@@ -127,12 +127,9 @@ public class KnightCombatAI extends AttackMoveAI<EntityCitizen>
     @Override
     public boolean canAttack()
     {
-        final int weaponSlot =
-          InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(user.getInventoryCitizen(), ModEquipmentTypes.sword.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel());
-
-        if (weaponSlot != -1)
+        if (user.getInventory().hasMatch(ModEquipmentTypes.sword.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel()))
         {
-            user.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, weaponSlot);
+            user.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.sword.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel());
             return true;
         }
 

@@ -5,7 +5,7 @@ import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.inventory.ModContainers;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -64,7 +64,7 @@ public class ContainerBuildingInventory extends AbstractContainerMenu
         super(ModContainers.buildingInv.get(), windowId);
 
         tileEntityColonyBuilding = (TileEntityColonyBuilding) inv.player.level().getBlockEntity(pos);
-        this.buildingInventory = tileEntityColonyBuilding.getInventory();
+        this.buildingInventory = tileEntityColonyBuilding.getItemHandler();
         final int size = buildingInventory.getSlots();
         this.inventorySize = size / INVENTORY_COLUMNS;
 

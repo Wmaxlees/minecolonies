@@ -3,7 +3,7 @@ package com.minecolonies.core.network.messages.server.colony.building;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.network.messages.server.AbstractBuildingServerMessage;
 import net.minecraft.world.entity.player.Player;

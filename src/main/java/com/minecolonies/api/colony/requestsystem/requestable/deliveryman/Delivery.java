@@ -3,9 +3,11 @@ package com.minecolonies.api.colony.requestsystem.requestable.deliveryman;
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.requestsystem.factory.IFactoryController;
 import com.minecolonies.api.colony.requestsystem.location.ILocation;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.ReflectionUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
@@ -154,7 +156,11 @@ public class Delivery extends AbstractDeliverymanRequestable
         {
             return false;
         }
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getStack(), delivery.getStack());
+        Matcher matcher = new Matcher.Builder(getStack().getItem())
+            .compareDamage(getStack().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getStack().getTag())
+            .build();
+        return ItemStackUtils.compareItemStack(matcher, delivery.getStack());
     }
 
     @Override

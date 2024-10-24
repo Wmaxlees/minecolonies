@@ -61,25 +61,6 @@ public class BuildingWareHouse extends AbstractBuilding implements IWareHouse
     }
 
     @Override
-    public void requestRepair(final BlockPos builder)
-    {
-        //To ensure that the racks are all set to in the warehouse when repaired.
-        for (final BlockPos pos : containerList)
-        {
-            if (getColony().getWorld() != null)
-            {
-                final BlockEntity entity = getColony().getWorld().getBlockEntity(pos);
-                if (entity instanceof TileEntityRack)
-                {
-                    ((AbstractTileEntityRack) entity).setInWarehouse(true);
-                }
-            }
-        }
-
-        super.requestRepair(builder);
-    }
-
-    @Override
     public boolean canAccessWareHouse(final ICitizenData citizenData)
     {
         return getFirstModuleOccurance(CourierAssignmentModule.class).hasAssignedCitizen(citizenData);
@@ -124,7 +105,6 @@ public class BuildingWareHouse extends AbstractBuilding implements IWareHouse
             final BlockEntity entity = world.getBlockEntity(pos);
             if (entity instanceof TileEntityRack)
             {
-                ((AbstractTileEntityRack) entity).setInWarehouse(true);
                 while (((TileEntityRack) entity).getUpgradeSize() < getFirstModuleOccurance(WarehouseModule.class).getStorageUpgrade())
                 {
                     ((TileEntityRack) entity).upgradeRackSize();

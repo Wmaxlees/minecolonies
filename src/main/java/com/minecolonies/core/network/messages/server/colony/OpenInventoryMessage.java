@@ -143,7 +143,7 @@ public class OpenInventoryMessage extends AbstractColonyServerMessage
         {
             if (!StringUtil.isNullOrEmpty(name))
             {
-                citizen.getInventoryCitizen().setCustomName(name);
+                citizen.getInventory().setCustomName(name);
             }
 
             NetworkHooks.openScreen(player, citizen, packetBuffer -> packetBuffer.writeVarInt(citizen.getCitizenColonyHandler().getColonyId()).writeVarInt(citizen.getCivilianID()));

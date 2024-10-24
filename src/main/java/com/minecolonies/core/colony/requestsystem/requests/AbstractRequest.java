@@ -13,8 +13,10 @@ import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.IRequestable;
 import com.minecolonies.api.colony.requestsystem.requester.IRequester;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.MutableComponent;
@@ -403,14 +405,14 @@ public abstract class AbstractRequest<R extends IRequestable> implements IReques
     public void addDelivery(@NotNull final ItemStack stack)
     {
         this.deliveries.add(stack);
-        this.deliveries = InventoryUtils.processItemStackListAndMerge(this.deliveries);
+        this.deliveries = ItemStackUtils.mergeItemStacks(this.deliveries);
     }
 
     @Override
     public void addDelivery(@NotNull final List<ItemStack> list)
     {
         this.deliveries.addAll(list);
-        this.deliveries = InventoryUtils.processItemStackListAndMerge(this.deliveries);
+        this.deliveries = ItemStackUtils.mergeItemStacks(this.deliveries);
     }
 
     @Override

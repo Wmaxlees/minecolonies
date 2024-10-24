@@ -22,9 +22,14 @@ import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.*;
 import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.settings.CrafterRecipeSetting;
 import com.minecolonies.core.colony.buildings.modules.settings.SettingKey;
@@ -184,10 +189,15 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
       final Map<ResourceLocation, CustomRecipe> crafterRecipes)
     {
         final ItemStack one = storage.getPrimaryOutput();
+        final Matcher matcher = new Matcher.Builder(one.getItem())
+            .compareDamage(one.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, one.getTag())
+            .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, one.getCount())
+            .build();
         for (final CustomRecipe rec : crafterRecipes.values())
         {
             final ItemStack two = rec.getRecipeStorage().getPrimaryOutput();
-            if (ItemStackUtils.compareItemStacksIgnoreStackSize(one, two) && one.getCount() == two.getCount())
+            if (ItemStackUtils.compareItemStack(matcher, two))
             {
                 return true;
             }
@@ -344,7 +354,13 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
 
         return new HashMap<>(requiredItems.entrySet()
                                .stream()
-                               .collect(Collectors.toMap(key -> (stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, key.getKey().getItemStack(), false, true)), Map.Entry::getValue)));
+                               .collect(Collectors.toMap(key -> stack -> {
+                                    final ItemStack targetStack = key.getKey().getItemStack();
+                                    final Matcher matcher = new Matcher.Builder(targetStack.getItem())
+                                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, targetStack.getTag())
+                                        .build();
+                                    return ItemStackUtils.compareItemStack(matcher, stack);
+                               }, Map.Entry::getValue)));
     }
 
     @Override
@@ -546,7 +562,10 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
                     for(IToken<?> token : recipes)
                     {
                         final IRecipeStorage storage = recipeManager.getRecipes().get(token);
-                        if(storage.getRecipeType() instanceof ClassicRecipe && ItemStackUtils.compareItemStackListIgnoreStackSize(alternates, storage.getPrimaryOutput(), false, true))
+                        final Matcher matcher = new Matcher.Builder(storage.getPrimaryOutput().getItem())
+                            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, storage.getPrimaryOutput().getTag())
+                            .build();
+                        if(storage.getRecipeType() instanceof ClassicRecipe && ItemStackUtils.compareItemStacks(alternates, matcher))
                         {
                             removeRecipe(token);
                         }
@@ -577,7 +596,6 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
     public void improveRecipe(IRecipeStorage recipe, int count, ICitizenData citizen)
     {
         final List<ItemStorage> inputs = recipe.getCleanedInput().stream().sorted(Comparator.comparingInt(ItemStorage::getAmount).reversed()).collect(Collectors.toList());
-
 
         final double actualChance = Math.min(5.0, (BASE_CHANCE * count) + (BASE_CHANCE * citizen.getCitizenSkillHandler().getLevel(building.getModuleMatching(CraftingWorkerBuildingModule.class, m -> m.getJobEntry() == jobEntry).getRecipeImprovementSkill())));
         final double roll = citizen.getRandom().nextDouble() * 100;
@@ -636,7 +654,11 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
     @Nullable
     public IRecipeStorage getFirstRecipe(final ItemStack stack)
     {
-        return getFirstRecipe(itemStack -> !itemStack.isEmpty() && ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack, true, true));
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+            .build();
+        return getFirstRecipe(itemStack -> !itemStack.isEmpty() && ItemStackUtils.compareItemStack(matcher, itemStack));
     }
 
     @Override
@@ -726,9 +748,22 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
         int count = 0;
         final List<IWareHouse> wareHouses = building.getColony().getBuildingManager().getWareHouses();
 
+        final Matcher.Builder builder = new Matcher.Builder(item.getItem());
+        if (!item.ignoreDamageValue())
+        {
+            builder.compareDamage(item.getDamageValue());
+        }
+        if (!item.ignoreNBT())
+        {
+            builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, item.getItemStack().getTag());
+        }
+
         for(IWareHouse wareHouse: wareHouses)
         {
-            count += InventoryUtils.getCountFromBuilding(wareHouse, item);
+            if (wareHouse.getTileEntity() != null)
+            {
+                count += wareHouse.getTileEntity().countMatches(builder.build());
+            }
         }
         return count;
     }
@@ -746,13 +781,9 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
             final IRecipeStorage storage = IColonyManager.getInstance().getRecipeManager().getRecipes().get(token);
             if (storage != null && (stackPredicate.test(storage.getPrimaryOutput()) || storage.getAlternateOutputs().stream().anyMatch(i -> stackPredicate.test(i))))
             {
-                final Set<IItemHandler> handlers = new HashSet<>();
-                for (final ICitizenData workerEntity : building.getAllAssignedCitizen())
-                {
-                    handlers.add(workerEntity.getInventory());
-                }
+                final List<IInventory> inventories = building.getInventories();
                 IRecipeStorage toTest = storage.getRecipeType() instanceof MultiOutputRecipe ? storage.getClassicForMultiOutput(stackPredicate) : storage;
-                if (toTest.canFullFillRecipe(count, considerReservation ? reservedStacks() : Collections.emptyMap(), new ArrayList<>(handlers), building))
+                if (toTest.canFullFillRecipe(count, considerReservation ? reservedStacks() : Collections.emptyMap(), (IInventory[])inventories.toArray()))
                 {
                     return toTest;
                 }
@@ -764,13 +795,13 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
     @Override
     public boolean fullFillRecipe(final IRecipeStorage storage)
     {
-        final List<IItemHandler> handlers = building.getHandlers();
+        final List<IInventory> inventories = building.getInventories();
         final ICitizenData data = building.getModuleMatching(WorkerBuildingModule.class, m -> m.getJobEntry() == jobEntry).getFirstCitizen();
 
         if (data == null || !data.getEntity().isPresent())
         {
             // we shouldn't hit this case, but just in case...
-            return storage.fullfillRecipe(building.getColony().getWorld(), handlers);
+            return storage.fullfillRecipe(building.getColony().getWorld(), inventories);
         }
         final AbstractEntityCitizen worker = data.getEntity().get();
 
@@ -780,7 +811,7 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
                                           .withParameter(LootContextParams.TOOL, getCraftingTool(worker))
                                           .withLuck(getCraftingLuck(worker)));
 
-        return storage.fullfillRecipe(builder.create(RecipeStorage.recipeLootParameters), handlers);
+        return storage.fullfillRecipe(builder.create(RecipeStorage.recipeLootParameters), inventories);
     }
 
     @Override 

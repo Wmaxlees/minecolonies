@@ -15,9 +15,9 @@ import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.IRequestable;
 import com.minecolonies.api.colony.requestsystem.resolver.player.IPlayerRequestResolver;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.Colony;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.requestsystem.management.IStandardRequestManager;
@@ -120,9 +120,7 @@ public class StandardPlayerRequestResolver implements IPlayerRequestResolver
                 {
                     final ItemStack resolveStack = resolvablestacks.get(0);
                     resolveStack.setCount(Math.min(((IDeliverable) request.getRequest()).getCount(), resolveStack.getMaxStackSize()));
-                    final ItemStack remainingItemStack = InventoryUtils.addItemStackToItemHandlerWithResult(
-                      citizenDataOptional.get().getInventory(),
-                      resolveStack);
+                    final ItemStack remainingItemStack = citizenDataOptional.get().getInventory().insert(resolveStack, false);
 
                     if (ItemStackUtils.isEmpty(remainingItemStack))
                     {

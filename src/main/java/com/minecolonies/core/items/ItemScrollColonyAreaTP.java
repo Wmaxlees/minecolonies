@@ -1,8 +1,8 @@
 package com.minecolonies.core.items;
 
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.client.VanillaParticleMessage;
 import com.minecolonies.core.util.TeleportHelper;

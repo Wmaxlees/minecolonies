@@ -12,11 +12,11 @@ import com.minecolonies.api.colony.requestsystem.requestable.StackList;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.constant.CitizenConstants;
 import com.minecolonies.api.util.constant.TypeConstants;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.colony.buildings.modules.FieldsModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingPlantation;
 import com.minecolonies.core.colony.fields.PlantationField;
@@ -25,6 +25,7 @@ import com.minecolonies.core.colony.jobs.JobPlanter;
 import com.minecolonies.core.entity.ai.workers.crafting.AbstractEntityAICrafting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
@@ -223,7 +224,7 @@ public class EntityAIWorkPlanter extends AbstractEntityAICrafting<JobPlanter, Bu
 
         if (handlerResult.equals(ActionHandlerResult.FINISHED))
         {
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
 
             if (activeModuleResult.getAction().increasesActionCount())
             {
@@ -310,14 +311,14 @@ public class EntityAIWorkPlanter extends AbstractEntityAICrafting<JobPlanter, Bu
                 return ActionHandlerResult.NEEDS_ITEM;
             }
 
-            final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getItemHandlerCitizen(), currentStack.getItem());
-            worker.getCitizenItemHandler().setMainHeldItem(slot);
+            final Matcher matcher = new Matcher.Builder(currentStack.getItem()).build();
+            worker.getInventory().setHeldItem(InteractionHand.MAIN_HAND, matcher::match);
 
             BlockState blockState = planterModule.getPlantingBlockState(world, activeModuleResult.getWorkingPosition(), BlockUtils.getBlockStateFromStack(currentStack));
             if (world.setBlockAndUpdate(activeModuleResult.getActionPosition(), blockState))
             {
-                InventoryUtils.reduceStackInItemHandler(worker.getItemHandlerCitizen(), currentStack);
-                worker.getCitizenItemHandler().removeHeldItem();
+                worker.getInventory().reduceStackSize(matcher, 1);
+                worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
                 return ActionHandlerResult.FINISHED;
             }
 
@@ -346,9 +347,7 @@ public class EntityAIWorkPlanter extends AbstractEntityAICrafting<JobPlanter, Bu
                 return ActionHandlerResult.NEEDS_ITEM;
             }
 
-            final int boneMealSlot =
-              InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), stack -> planterModule.getValidBonemeal().contains(stack.getItem()));
-            final ItemStack stackInSlot = worker.getInventoryCitizen().getStackInSlot(boneMealSlot);
+            final ItemStack stackInSlot = worker.getInventory().findFirstMatch(stack -> planterModule.getValidBonemeal().contains(stack.getItem()));
             planterModule.applyBonemeal(worker, activeModuleResult.getActionPosition(), stackInSlot, getFakePlayer());
         }
         return ActionHandlerResult.FINISHED;
@@ -392,8 +391,7 @@ public class EntityAIWorkPlanter extends AbstractEntityAICrafting<JobPlanter, Bu
      */
     private boolean checkIfItemsUnavailable(final IConcreteDeliverable deliverable)
     {
-        final int invCount =
-          InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), deliverable::matches);
+        final int invCount = worker.getInventory().countMatches(deliverable::matches);
         if (invCount >= deliverable.getMinimumCount())
         {
             return false;
@@ -427,7 +425,7 @@ public class EntityAIWorkPlanter extends AbstractEntityAICrafting<JobPlanter, Bu
     @Override
     public IAIState getStateAfterPickUp()
     {
-        if (currentDeliverable != null && !InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), currentDeliverable.getResult().getItem())
+        if (currentDeliverable != null && !worker.getInventory().hasMatch(new Matcher.Builder(currentDeliverable.getResult().getItem()).build())
               && building.getOpenRequestsOfTypeFiltered(worker.getCitizenData(), TypeConstants.DELIVERABLE,
           (IRequest<? extends IDeliverable> r) -> currentDeliverable.getRequestedItems().stream().anyMatch(r.getRequest()::matches)).isEmpty()
               && building.getCompletedRequestsOfTypeFiltered(worker.getCitizenData(), TypeConstants.DELIVERABLE,

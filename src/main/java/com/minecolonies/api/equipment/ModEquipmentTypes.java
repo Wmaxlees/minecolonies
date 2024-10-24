@@ -3,9 +3,10 @@ package com.minecolonies.api.equipment;
 import com.minecolonies.api.IMinecoloniesAPI;
 import com.minecolonies.api.compatibility.Compatibility;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.translation.ToolTranslationConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;

@@ -12,9 +12,11 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Delivery;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.workorders.IWorkOrderView;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.moduleviews.BuildingResourcesModuleView;
 import com.minecolonies.core.colony.buildings.utils.BuildingBuilderResource;
@@ -93,6 +95,11 @@ public class WindowResourceList extends AbstractWindowSkeleton
         double total = 0;
         for (final BuildingBuilderResource resource : resources)
         {
+            final Matcher resourceMatcher = new Matcher.Builder(resource.getItem())
+                    .compareDamage(resource.getItemStack().getDamageValue())
+                    .compareNBT(ItemNBTMatcher.EXACT_MATCH, resource.getItemStack().getTag())
+                    .build();
+
             final int amountToSet;
             if (isCreative)
             {
@@ -101,8 +108,7 @@ public class WindowResourceList extends AbstractWindowSkeleton
             else
             {
                 amountToSet =
-                  InventoryUtils.getItemCountInItemHandler(new InvWrapper(inventory),
-                    stack -> !ItemStackUtils.isEmpty(stack) && ItemStackUtils.compareItemStacksIgnoreStackSize(stack, resource.getItemStack()));
+                  InventoryUtils.countInPlayersInventory(mc.player, resourceMatcher);
             }
 
             resource.setPlayerAmount(amountToSet);
@@ -110,7 +116,7 @@ public class WindowResourceList extends AbstractWindowSkeleton
             resource.setAmountInDelivery(0);
             for (final Delivery delivery : deliveries)
             {
-                if (ItemStackUtils.compareItemStacksIgnoreStackSize(resource.getItemStack(), delivery.getStack(), false, true))
+                if (ItemStackUtils.compareItemStack(resourceMatcher, delivery.getStack()))
                 {
                     resource.setAmountInDelivery(resource.getAmountInDelivery() + delivery.getStack().getCount());
                 }

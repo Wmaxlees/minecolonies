@@ -1,6 +1,7 @@
 package com.minecolonies.core.entity.ai.workers.production.herders;
 
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingRabbitHutch;
 import com.minecolonies.core.colony.jobs.JobRabbitHerder;
 import net.minecraft.world.InteractionHand;
@@ -37,7 +38,8 @@ public class EntityAIWorkRabbitHerder extends AbstractEntityAIHerder<JobRabbitHe
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.CARROT))
+        final Matcher matcher = new Matcher.Builder(Items.CARROT).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             renderMeta += RENDER_META_CARROT;
         }

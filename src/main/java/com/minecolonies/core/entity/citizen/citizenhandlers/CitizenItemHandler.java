@@ -3,6 +3,7 @@ package com.minecolonies.core.entity.citizen.citizenhandlers;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.citizenhandlers.ICitizenItemHandler;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.client.BlockParticleEffectMessage;
 import net.minecraft.core.BlockPos;
@@ -70,7 +71,7 @@ public class CitizenItemHandler implements ICitizenItemHandler
 
             if (citizen.getCitizenJobHandler().getColonyJob() == null || citizen.getCitizenJobHandler().getColonyJob().pickupSuccess(compareStack))
             {
-                final ItemStack resultStack = InventoryUtils.addItemStackToItemHandlerWithResult(citizen.getInventoryCitizen(), itemStack);
+                final ItemStack resultStack = citizen.getInventory().insert(itemStack, false);
                 final int resultingStackSize = ItemStackUtils.isEmpty(resultStack) ? 0 : ItemStackUtils.getSize(resultStack);
 
                 if (ItemStackUtils.isEmpty(resultStack) || ItemStackUtils.getSize(resultStack) != ItemStackUtils.getSize(compareStack))
@@ -102,47 +103,6 @@ public class CitizenItemHandler implements ICitizenItemHandler
                 itemEntity.remove(Entity.RemovalReason.DISCARDED);
             }
         }
-    }
-
-    /**
-     * Removes the currently held item.
-     */
-    @Override
-    public void removeHeldItem()
-    {
-        citizen.setItemSlot(EquipmentSlot.MAINHAND, ItemStackUtils.EMPTY);
-    }
-
-    /**
-     * Sets the currently held item.
-     *
-     * @param hand what hand we're setting
-     * @param slot from the inventory slot.
-     */
-    @Override
-    public void setHeldItem(final InteractionHand hand, final int slot)
-    {
-        citizen.getCitizenData().getInventory().setHeldItem(hand, slot);
-        if (hand.equals(InteractionHand.MAIN_HAND))
-        {
-            citizen.setItemSlot(EquipmentSlot.MAINHAND, citizen.getCitizenData().getInventory().getStackInSlot(slot));
-        }
-        else if (hand.equals(InteractionHand.OFF_HAND))
-        {
-            citizen.setItemSlot(EquipmentSlot.OFFHAND, citizen.getCitizenData().getInventory().getStackInSlot(slot));
-        }
-    }
-
-    /**
-     * Sets the currently held for mainHand item.
-     *
-     * @param slot from the inventory slot.
-     */
-    @Override
-    public void setMainHeldItem(final int slot)
-    {
-        citizen.getCitizenData().getInventory().setHeldItem(InteractionHand.MAIN_HAND, slot);
-        citizen.setItemSlot(EquipmentSlot.MAINHAND, citizen.getCitizenData().getInventory().getStackInSlot(slot));
     }
 
     /**
@@ -339,11 +299,11 @@ public class CitizenItemHandler implements ICitizenItemHandler
         for (int i = 0; i < 4; i++)
         {
             final EquipmentSlot equipmentSlot = EquipmentSlot.byTypeAndIndex(EquipmentSlot.Type.ARMOR, i);
-            final ItemStack equipment = citizen.getInventoryCitizen().getArmorInSlot(equipmentSlot);
+            final ItemStack equipment = citizen.getInventory().getArmorInSlot(equipmentSlot);
             equipment.hurtAndBreak(armorDmg, citizen, (s) -> {
                 s.broadcastBreakEvent(equipmentSlot);
                 citizen.onArmorRemove(equipment, equipmentSlot);
-                citizen.getInventoryCitizen().markDirty();
+                citizen.getInventory().markDirty();
             });
         }
     }
@@ -363,11 +323,11 @@ public class CitizenItemHandler implements ICitizenItemHandler
             final ItemStack tool;
             if (equipmentSlot.isArmor())
             {
-                tool = citizen.getInventoryCitizen().getArmorInSlot(equipmentSlot);
+                tool = citizen.getInventory().getArmorInSlot(equipmentSlot);
             }
             else
             {
-                tool = citizen.getInventoryCitizen().getHeldItem(equipmentSlot == EquipmentSlot.MAINHAND ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
+                tool = citizen.getInventory().getHeldItem(equipmentSlot == EquipmentSlot.MAINHAND ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
             }
 
             if (!ItemStackUtils.isEmpty(tool) && tool.isDamaged() && tool.isEnchanted() && EnchantmentHelper.getEnchantments(tool).containsKey(Enchantments.MENDING))

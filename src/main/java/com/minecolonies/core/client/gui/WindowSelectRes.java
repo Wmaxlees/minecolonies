@@ -8,8 +8,9 @@ import com.ldtteam.blockui.controls.Text;
 import com.ldtteam.blockui.controls.TextField;
 import com.ldtteam.blockui.views.BOWindow;
 import com.ldtteam.blockui.views.ScrollingList;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;

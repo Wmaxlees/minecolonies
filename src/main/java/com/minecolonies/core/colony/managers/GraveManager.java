@@ -8,9 +8,10 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.managers.interfaces.IGraveManager;
 import com.minecolonies.core.tileentities.TileEntityGrave;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.blocks.BlockMinecoloniesGrave;
 import com.minecolonies.core.colony.Colony;
 import net.minecraft.nbt.CompoundTag;
@@ -31,6 +32,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import static com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickRateConstants.MAX_TICKRATE;
@@ -294,19 +296,14 @@ public class GraveManager implements IGraveManager
             world.setBlockAndUpdate(firstValidPosition,
               BlockMinecoloniesGrave.getPlacementState(ModBlocks.blockGrave.defaultBlockState(), firstValidPosition));
             final TileEntityGrave graveEntity = (TileEntityGrave) world.getBlockEntity(firstValidPosition);
-            if (!InventoryUtils.transferAllItemHandler(citizenData.getInventory(), graveEntity.getInventory()))
+            final List<ItemStack> items = InventoryUtils.transferAllAndClear(citizenData.getInventory(), graveEntity);
+            for (final ItemStack stack : items)
             {
-                InventoryUtils.dropItemHandler(citizenData.getInventory(), world, pos.getX(), pos.getY(), pos.getZ());
-            }
-            for (final EquipmentSlot equipmentSlot : EquipmentSlot.values())
-            {
-                final ItemStack stack = citizenData.getInventory().getArmorInSlot(equipmentSlot);
-                if (!InventoryUtils.addItemStackToItemHandler(graveEntity.getInventory(), stack))
+                if (!stack.isEmpty())
                 {
-                    InventoryUtils.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), stack);
+                    ItemStackUtils.spawnItemStack(world, pos.getX(), pos.getY(), pos.getZ(), stack);
                 }
             }
-
 
             graveEntity.delayDecayTimer(colony.getResearchManager().getResearchEffects().getEffectStrength(GRAVE_DECAY_BONUS));
 
@@ -325,7 +322,7 @@ public class GraveManager implements IGraveManager
         }
         else
         {
-            InventoryUtils.dropItemHandler(citizenData.getInventory(), world, pos.getX(), pos.getY(), pos.getZ());
+            citizenData.getInventory().dropAllItems(world, pos);
         }
         return false;
     }

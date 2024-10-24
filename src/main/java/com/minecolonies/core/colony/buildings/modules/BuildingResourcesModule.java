@@ -12,8 +12,10 @@ import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.workorders.IWorkOrder;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.inventory.InventoryCitizen;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuildingStructureBuilder;
 import com.minecolonies.core.colony.buildings.utils.BuilderBucket;
 import com.minecolonies.core.colony.buildings.utils.BuildingBuilderResource;
@@ -30,7 +32,6 @@ import java.util.*;
 
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_CURR_STAGE;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_TOTAL_STAGES;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
 /**
  * The structureBuilder building.
@@ -132,26 +133,25 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
             {
                 final BuildingBuilderResource resource = entry.getValue();
 
+                final Matcher matcher = new Matcher.Builder(resource.getItem())
+                    .compareDamage(resource.getItemStack().getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, resource.getItemStack().getTag())
+                    .build();
+
                 resource.setAvailable(0);
 
                 if (structureBuilderInventory != null)
                 {
-                    resource.addAvailable(InventoryUtils.getItemCountInItemHandler(structureBuilderInventory,
-                      stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, resource.getItemStack(), true, true)));
+                    resource.addAvailable(structureBuilderInventory.countMatches(matcher));
                 }
 
-                if (building.getTileEntity() != null)
-                {
-                    resource.addAvailable(InventoryUtils.getItemCountInItemHandler(building.getCapability(ForgeCapabilities.ITEM_HANDLER, null).orElseGet(null),
-                      stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, resource.getItemStack(), true, true)));
-                }
+                resource.addAvailable(building.countMatches(matcher));
 
                 if (data.getJob() instanceof IJobWithExternalWorkStations)
                 {
                     for (final IBuilding station : ((IJobWithExternalWorkStations) data.getJob()).getWorkStations())
                     {
-                        resource.addAvailable(InventoryUtils.getItemCountInItemHandler(station.getCapability(ForgeCapabilities.ITEM_HANDLER, null).orElseGet(null),
-                          stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, resource.getItemStack(), true, true)));
+                        resource.addAvailable(station.countMatches(matcher));
                     }
                 }
             }
@@ -331,8 +331,10 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
      */
     public void checkOrRequestBucket(@Nullable final BuilderBucket requiredResources, final ICitizenData worker, final boolean workerInv)
     {
+        Log.getLogger().info("checkOrRequestBucket");
         if (requiredResources == null)
         {
+            Log.getLogger().info("No required resources");
             return;
         }
 
@@ -345,8 +347,13 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
                 continue;
             }
 
-            int count = InventoryUtils.hasBuildingEnoughElseCount(building,
-              stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack.getItemStack()), entry.getValue());
+            final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                .compareDamage(itemStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getItemStack().getTag())
+                .build();
+
+            int count = building.countMatches(matcher);
+            Log.getLogger().info("Checking for " + itemStack.getItemStack().getDisplayName().getString() + " in building inventory. Found: " + count + " Needed: " + entry.getValue());
 
             if (count >= entry.getValue())
             {
@@ -355,7 +362,8 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
 
             if (workerInv)
             {
-                count += InventoryUtils.getItemCountInItemHandler(worker.getInventory(), stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack.getItemStack()));
+                count += worker.getInventory().countMatches(matcher);
+                Log.getLogger().info("Checking for " + itemStack.getItemStack().getDisplayName().getString() + " in worker inventory. Found: " + count + " Needed: " + entry.getValue());
                 if (count >= entry.getValue())
                 {
                     continue;
@@ -366,7 +374,7 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
             final ImmutableList<IRequest<? extends Stack>> list = building.getOpenRequestsOfType(worker.getId(), TypeToken.of(Stack.class));
             for (final IRequest<? extends Stack> request : list)
             {
-                if (ItemStackUtils.compareItemStacksIgnoreStackSize(request.getRequest().getStack(), itemStack.getItemStack()))
+                if (ItemStackUtils.compareItemStack(matcher, request.getRequest().getStack()))
                 {
                     continue resourceloop;
                 }

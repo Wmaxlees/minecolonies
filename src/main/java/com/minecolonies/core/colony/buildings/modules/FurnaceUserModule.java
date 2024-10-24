@@ -5,7 +5,8 @@ import com.minecolonies.api.colony.buildings.modules.IAltersRequiredItems;
 import com.minecolonies.api.colony.buildings.modules.IModuleWithExternalBlocks;
 import com.minecolonies.api.colony.buildings.modules.IPersistentModule;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;

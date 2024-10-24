@@ -21,11 +21,6 @@ public class StudyItem
     private final int breakChance;
 
     /**
-     * Inventory slot the item is found in, set for specific use
-     */
-    private int slot = -1;
-
-    /**
      * Initializing Study item, making sure the rates are valid.
      *
      * @param breakChance   the break chance.
@@ -52,15 +47,5 @@ public class StudyItem
     public int getBreakPct()
     {
         return breakChance;
-    }
-
-    public int getSlot()
-    {
-        return slot;
-    }
-
-    public void setSlot(final int slot)
-    {
-        this.slot = slot;
     }
 }

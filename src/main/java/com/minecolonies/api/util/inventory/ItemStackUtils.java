@@ -1,6 +1,7 @@
-package com.minecolonies.api.util;
+package com.minecolonies.api.util.inventory;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.minecolonies.api.advancements.AdvancementTriggers;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
@@ -13,6 +14,11 @@ import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.items.CheckedNbtKey;
 import com.minecolonies.api.items.ModItems;
 import com.minecolonies.api.items.ModTags;
+import com.minecolonies.api.util.EntityUtils;
+import com.minecolonies.api.util.FoodUtils;
+import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.inventory.params.*;
 import com.minecolonies.core.util.AdvancementUtils;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.nbt.CompoundTag;
@@ -26,11 +32,13 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BrewingStandBlockEntity;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
 import net.minecraft.world.phys.EntityHitResult;
@@ -52,6 +60,16 @@ import static com.minecolonies.api.util.constant.Constants.*;
  */
 public final class ItemStackUtils
 {
+    /**
+     * Several values to spawn items in the world.
+     */
+    private static final double SPAWN_MODIFIER    = 0.8D;
+    private static final double SPAWN_ADDITION    = 0.1D;
+    private static final int    MAX_RANDOM_SPAWN  = 21;
+    private static final int    MIN_RANDOM_SPAWN  = 10;
+    private static final double MOTION_MULTIPLIER = 0.05000000074505806D;
+    private static final double MOTION_Y_MIN      = 0.20000000298023224D;
+
     /**
      * Pattern for {@link #parseIdTemplate}.
      */
@@ -490,7 +508,11 @@ public final class ItemStackUtils
     @NotNull
     public static Boolean areItemStacksMergable(final ItemStack existingStack, final ItemStack mergingStack)
     {
-        if (!compareItemStacksIgnoreStackSize(existingStack, mergingStack))
+        Matcher comparator = new Matcher.Builder(existingStack.getItem())
+            .compareDamage(existingStack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.EXACT_MATCH, existingStack.getTag())
+            .build();
+        if (comparator.match(mergingStack))
         {
             return false;
         }
@@ -498,18 +520,18 @@ public final class ItemStackUtils
         return existingStack.getMaxStackSize() >= (getSize(existingStack) + getSize(mergingStack));
     }
 
-    /**
-     * Method to compare to stacks, ignoring their stacksize.
-     *
-     * @param itemStack1 The left stack to compare.
-     * @param itemStack2 The right stack to compare.
-     * @return True when they are equal except the stacksize, false when not.
-     */
-    @NotNull
-    public static Boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2)
-    {
-        return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, true, true);
-    }
+    // /**
+    //  * Method to compare to stacks, ignoring their stacksize.
+    //  *
+    //  * @param itemStack1 The left stack to compare.
+    //  * @param itemStack2 The right stack to compare.
+    //  * @return True when they are equal except the stacksize, false when not.
+    //  */
+    // @NotNull
+    // public static Boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2)
+    // {
+    //     return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, true, true);
+    // }
 
     /**
      * get the size of the stac
@@ -538,145 +560,145 @@ public final class ItemStackUtils
         return stack.getMaxDamage() - stack.getDamageValue();
     }
 
-    /**
-     * Method to compare to stacks, ignoring their stacksize.
-     *
-     * @param itemStack1  The left stack to compare.
-     * @param itemStack2  The right stack to compare.
-     * @param matchDamage Set to true to match damage data.
-     * @param matchNBT    Set to true to match nbt
-     * @return True when they are equal except the stacksize, false when not.
-     */
-    public static boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2, final boolean matchDamage, final boolean matchNBT)
-    {
-        return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, matchDamage, matchNBT, false);
-    }
+    // /**
+    //  * Method to compare to stacks, ignoring their stacksize.
+    //  *
+    //  * @param itemStack1  The left stack to compare.
+    //  * @param itemStack2  The right stack to compare.
+    //  * @param matchDamage Set to true to match damage data.
+    //  * @param matchNBT    Set to true to match nbt
+    //  * @return True when they are equal except the stacksize, false when not.
+    //  */
+    // public static boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2, final boolean matchDamage, final boolean matchNBT)
+    // {
+    //     return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, matchDamage, matchNBT, false);
+    // }
 
-    /**
-     * Method to compare to stacks, ignoring their stacksize.
-     *
-     * @param itemStack1  The left stack to compare.
-     * @param itemStack2  The right stack to compare.
-     * @param matchDamage Set to true to match damage data.
-     * @param matchNBT    Set to true to match nbt
-     * @param min         if the count of stack2 has to be at least the same as stack1.
-     * @return True when they are equal except the stacksize, false when not.
-     */
-    public static boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2, final boolean matchDamage, final boolean matchNBT, final boolean min)
-    {
-        return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, matchDamage, matchNBT, false, false);
-    }
+    // /**
+    //  * Method to compare to stacks, ignoring their stacksize.
+    //  *
+    //  * @param itemStack1  The left stack to compare.
+    //  * @param itemStack2  The right stack to compare.
+    //  * @param matchDamage Set to true to match damage data.
+    //  * @param matchNBT    Set to true to match nbt
+    //  * @param min         if the count of stack2 has to be at least the same as stack1.
+    //  * @return True when they are equal except the stacksize, false when not.
+    //  */
+    // public static boolean compareItemStacksIgnoreStackSize(final ItemStack itemStack1, final ItemStack itemStack2, final boolean matchDamage, final boolean matchNBT, final boolean min)
+    // {
+    //     return compareItemStacksIgnoreStackSize(itemStack1, itemStack2, matchDamage, matchNBT, false, false);
+    // }
 
-    /**
-     * Method to compare to stacks, ignoring their stacksize.
-     *
-     * @param itemStack1  The left stack to compare.
-     * @param itemStack2  The right stack to compare.
-     * @param matchDamage Set to true to match damage data.
-     * @param matchNBT    Set to true to match nbt
-     * @param min         if the count of stack2 has to be at least the same as stack1.
-     * @return True when they are equal except the stacksize, false when not.
-     */
-    public static boolean compareItemStacksIgnoreStackSize(
-      final ItemStack itemStack1,
-      final ItemStack itemStack2,
-      final boolean matchDamage,
-      final boolean matchNBT,
-      final boolean min,
-      final boolean matchNBTExactly)
-    {
-        if (isEmpty(itemStack1) && isEmpty(itemStack2))
-        {
-            return true;
-        }
+    // /**
+    //  * Method to compare to stacks, ignoring their stacksize.
+    //  *
+    //  * @param itemStack1  The left stack to compare.
+    //  * @param itemStack2  The right stack to compare.
+    //  * @param matchDamage Set to true to match damage data.
+    //  * @param matchNBT    Set to true to match nbt
+    //  * @param min         if the count of stack2 has to be at least the same as stack1.
+    //  * @return True when they are equal except the stacksize, false when not.
+    //  */
+    // public static boolean compareItemStacksIgnoreStackSize(
+    //   final ItemStack itemStack1,
+    //   final ItemStack itemStack2,
+    //   final boolean matchDamage,
+    //   final boolean matchNBT,
+    //   final boolean min,
+    //   final boolean matchNBTExactly)
+    // {
+    //     if (isEmpty(itemStack1) && isEmpty(itemStack2))
+    //     {
+    //         return true;
+    //     }
 
-        if (isEmpty(itemStack1) != isEmpty(itemStack2))
-        {
-            return false;
-        }
+    //     if (isEmpty(itemStack1) != isEmpty(itemStack2))
+    //     {
+    //         return false;
+    //     }
 
-        if (itemStack1.getItem() == itemStack2.getItem() && (!matchDamage || itemStack1.getDamageValue() == itemStack2.getDamageValue()))
-        {
-            if (!matchNBT)
-            {
-                // Not comparing nbt
-                return true;
-            }
+    //     if (itemStack1.getItem() == itemStack2.getItem() && (!matchDamage || itemStack1.getDamageValue() == itemStack2.getDamageValue()))
+    //     {
+    //         if (!matchNBT)
+    //         {
+    //             // Not comparing nbt
+    //             return true;
+    //         }
 
-            if (min && itemStack1.getCount() > itemStack2.getCount())
-            {
-                return false;
-            }
+    //         if (min && itemStack1.getCount() > itemStack2.getCount())
+    //         {
+    //             return false;
+    //         }
 
-            if (itemStack1.hasTag() || itemStack2.hasTag())
-            {
-                if (matchNBTExactly)
-                {
-                    return Objects.equals(itemStack1.getTag(), itemStack2.getTag());
-                }
-                final Set<CheckedNbtKey> checkedKeys = CHECKED_NBT_KEYS.getOrDefault(itemStack1.getItem(), null);
-                if (checkedKeys == null)
-                {
-                    return itemStack1.hasTag() && itemStack2.hasTag() && itemStack1.getTag().equals(itemStack2.getTag());
-                }
-                if (itemStack1.hasTag() != itemStack2.hasTag() && !checkedKeys.isEmpty())
-                {
-                    return false;
-                }
+    //         if (itemStack1.hasTag() || itemStack2.hasTag())
+    //         {
+    //             if (matchNBTExactly)
+    //             {
+    //                 return Objects.equals(itemStack1.getTag(), itemStack2.getTag());
+    //             }
+    //             final Set<CheckedNbtKey> checkedKeys = CHECKED_NBT_KEYS.getOrDefault(itemStack1.getItem(), null);
+    //             if (checkedKeys == null)
+    //             {
+    //                 return itemStack1.hasTag() && itemStack2.hasTag() && itemStack1.getTag().equals(itemStack2.getTag());
+    //             }
+    //             if (itemStack1.hasTag() != itemStack2.hasTag() && !checkedKeys.isEmpty())
+    //             {
+    //                 return false;
+    //             }
 
-                if (checkedKeys.isEmpty())
-                {
-                    return true;
-                }
+    //             if (checkedKeys.isEmpty())
+    //             {
+    //                 return true;
+    //             }
 
-                CompoundTag nbt1 = itemStack1.getTag();
-                CompoundTag nbt2 = itemStack2.getTag();
+    //             CompoundTag nbt1 = itemStack1.getTag();
+    //             CompoundTag nbt2 = itemStack2.getTag();
 
-                for (final CheckedNbtKey key : checkedKeys)
-                {
-                    if (!key.matches(nbt1, nbt2))
-                    {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-        return false;
-    }
+    //             for (final CheckedNbtKey key : checkedKeys)
+    //             {
+    //                 if (!key.matches(nbt1, nbt2))
+    //                 {
+    //                     return false;
+    //                 }
+    //             }
+    //         }
+    //         return true;
+    //     }
+    //     return false;
+    // }
 
-    /**
-     * Method to check if a stack is in a list of stacks.
-     *
-     * @param stacks the list of stacks.
-     * @param stack  the stack.
-     * @return true if so.
-     */
-    public static boolean compareItemStackListIgnoreStackSize(final List<ItemStack> stacks, final ItemStack stack)
-    {
-        return compareItemStackListIgnoreStackSize(stacks, stack, true, true);
-    }
+    // /**
+    //  * Method to check if a stack is in a list of stacks.
+    //  *
+    //  * @param stacks the list of stacks.
+    //  * @param stack  the stack.
+    //  * @return true if so.
+    //  */
+    // public static boolean compareItemStackListIgnoreStackSize(final List<ItemStack> stacks, final ItemStack stack)
+    // {
+    //     return compareItemStackListIgnoreStackSize(stacks, stack, true, true);
+    // }
 
-    /**
-     * Method to check if a stack is in a list of stacks.
-     *
-     * @param stacks      the list of stacks.
-     * @param stack       the stack.
-     * @param matchDamage if damage has to match.
-     * @param matchNBT    if nbt has to match.
-     * @return true if so.
-     */
-    public static boolean compareItemStackListIgnoreStackSize(final List<ItemStack> stacks, final ItemStack stack, final boolean matchDamage, final boolean matchNBT)
-    {
-        for (final ItemStack tempStack : stacks)
-        {
-            if (compareItemStacksIgnoreStackSize(tempStack, stack, matchDamage, matchNBT))
-            {
-                return true;
-            }
-        }
-        return false;
-    }
+    // /**
+    //  * Method to check if a stack is in a list of stacks.
+    //  *
+    //  * @param stacks      the list of stacks.
+    //  * @param stack       the stack.
+    //  * @param matchDamage if damage has to match.
+    //  * @param matchNBT    if nbt has to match.
+    //  * @return true if so.
+    //  */
+    // public static boolean compareItemStackListIgnoreStackSize(final List<ItemStack> stacks, final ItemStack stack, final boolean matchDamage, final boolean matchNBT)
+    // {
+    //     for (final ItemStack tempStack : stacks)
+    //     {
+    //         if (compareItemStacksIgnoreStackSize(tempStack, stack, matchDamage, matchNBT))
+    //         {
+    //             return true;
+    //         }
+    //     }
+    //     return false;
+    // }
 
     /**
      * set the size of the stack. This is for compatibility between 1.10 and 1.11
@@ -953,7 +975,7 @@ public final class ItemStackUtils
         {
             if (citizenData.getInventory().isFull() || (inventory != null && !inventory.add(itemUseReturn)))
             {
-                InventoryUtils.spawnItemStack(
+                spawnItemStack(
                   citizen.level,
                   citizen.getX(),
                   citizen.getY(),
@@ -963,7 +985,7 @@ public final class ItemStackUtils
             }
             else
             {
-                InventoryUtils.addItemStackToItemHandler(citizenData.getInventory(), itemUseReturn);
+                citizenData.getInventory().insert(itemUseReturn, false);
             }
         }
 
@@ -973,6 +995,187 @@ public final class ItemStackUtils
             AdvancementUtils.TriggerAdvancementPlayersForColony(citizenColony, playerMP -> AdvancementTriggers.CITIZEN_EAT_FOOD.trigger(playerMP, foodStack));
         }
         citizenData.markDirty(60);
+    }
+
+    /**
+     * Converts a Block to its Item so it can be compared.
+     *
+     * @param block the block to convert
+     * @return an item from the registry
+     */
+    public static Item getItemFromBlock(final Block block)
+    {
+        return Item.byBlock(block);
+    }
+
+    /**
+     * Spawn an itemStack in the world.
+     *
+     * @param worldIn the world.
+     * @param x       the x pos.
+     * @param y       the y pos.
+     * @param z       the z pos.
+     * @param stack   the stack to drop.
+     */
+    public static void spawnItemStack(final Level worldIn, final double x, final double y, final double z, final ItemStack stack)
+    {
+        final Random random = new Random();
+        final double spawnX = random.nextDouble() * SPAWN_MODIFIER + SPAWN_ADDITION;
+        final double spawnY = random.nextDouble() * SPAWN_MODIFIER + SPAWN_ADDITION;
+        final double spawnZ = random.nextDouble() * SPAWN_MODIFIER + SPAWN_ADDITION;
+
+        while (stack.getCount() > 0)
+        {
+            final int randomSplitStackSize = random.nextInt(MAX_RANDOM_SPAWN) + MIN_RANDOM_SPAWN;
+            final ItemEntity ItemEntity = new ItemEntity(worldIn, x + spawnX, y + spawnY, z + spawnZ, stack.split(randomSplitStackSize));
+
+            ItemEntity.setDeltaMovement(random.nextGaussian() * MOTION_MULTIPLIER, random.nextGaussian() * MOTION_MULTIPLIER + MOTION_Y_MIN, random.nextGaussian() * MOTION_MULTIPLIER);
+            worldIn.addFreshEntity(ItemEntity);
+        }
+    }
+
+    /**
+     * Calculates how many items match the given predicate that are in the list.
+     *
+     * @param stacks         the stacks to count in.
+     * @param stackPredicate the condition to count for.
+     * @return The sum of the itemstack sizes that match the predicate
+     */
+    public static int getItemCountInStackList(@NotNull final List<ItemStack> stacks, @NotNull final Predicate<ItemStack> stackPredicate)
+    {
+        return stacks.stream().filter(ItemStackUtils::isNotEmpty).filter(stackPredicate).mapToInt(ItemStackUtils::getSize).sum();
+    }
+
+    /**
+     * This method splits a map with an entry for each unique unified itemstack and its count into a list of itemstacks that represent the maps, taken the max stack size into
+     * account.
+     *
+     * @param mergedCountedStacks the map with the unique unified itemstacks and their counts.
+     * @return The list of itemstacks that represent the map, taken the max stack size into account.
+     */
+    public static List<ItemStack> convertToMaxSizeItemStacks(@NotNull final Map<ItemStack, Integer> mergedCountedStacks)
+    {
+        final List<ItemStack> list = Lists.newArrayList();
+        for (final Map.Entry<ItemStack, Integer> itemStackIntegerEntry : mergedCountedStacks.entrySet())
+        {
+            final int minimalFullStacks = itemStackIntegerEntry.getValue() / itemStackIntegerEntry.getKey().getMaxStackSize();
+            final int residualStackSize = itemStackIntegerEntry.getValue() % itemStackIntegerEntry.getKey().getMaxStackSize();
+
+            for (int i = 0; i < minimalFullStacks; i++)
+            {
+                final ItemStack tobeAdded = itemStackIntegerEntry.getKey().copy();
+                tobeAdded.setCount(tobeAdded.getMaxStackSize());
+
+                list.add(tobeAdded);
+            }
+
+            if (residualStackSize > 0)
+            {
+                final ItemStack tobeAdded = itemStackIntegerEntry.getKey().copy();
+                tobeAdded.setCount(residualStackSize);
+
+                list.add(tobeAdded);
+            }
+        }
+
+        return list;
+    }
+
+    /**
+     * Unifies a list of stacks so that they are all packed to together to the max stack size.
+     *
+     * @param stacks The stacks to pack.
+     * @return The packed stacks
+     */
+    public static List<ItemStack> mergeItemStacks(@NotNull final List<ItemStack> stacks)
+    {
+        return convertToMaxSizeItemStacks(mergeCounts(stacks));
+    }
+
+    /**
+     * Returns whether two sets of itemstorage has the same content
+     *
+     * @param first     First set of item storages
+     * @param second    Second set of item storages
+     * @param showTrace whther to print a stacktrace on false
+     * @return true if matching
+     */
+    public static boolean doStorageSetsMatch(Map<ItemStorage, ItemStorage> first, Map<ItemStorage, ItemStorage> second, boolean showTrace)
+    {
+        for (final ItemStorage storage : first.keySet())
+        {
+            final ItemStorage compareStorage = second.get(storage);
+
+            if (compareStorage == null || storage.getAmount() != compareStorage.getAmount())
+            {
+                if (showTrace)
+                {
+                    Log.getLogger().warn("Possible inventory issue, not matching:", new Exception());
+                }
+                return false;
+            }
+        }
+
+        for (final ItemStorage storage : second.keySet())
+        {
+            final ItemStorage compareStorage = first.get(storage);
+
+            if (compareStorage == null || storage.getAmount() != compareStorage.getAmount())
+            {
+                if (showTrace)
+                {
+                    Log.getLogger().warn("Possible inventory issue, not matching:", new Exception());
+                }
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * This method calculates the amount of items in itemstacks are contained within a list.
+     *
+     * @param stacks The stacks to count.
+     * @return A map with a entry for each unique unified itemstack and its count in the list.
+     */
+    public static Map<ItemStack, Integer> mergeCounts(@NotNull final List<ItemStack> stacks)
+    {
+        final Map<ItemStack, Integer> requiredCountForStacks = Maps.newHashMap();
+        stacks.forEach(targetStack -> {
+            final Matcher comparator = new Matcher.Builder(targetStack.getItem())
+                .compareDamage(targetStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.EXACT_MATCH, targetStack.getTag())
+                .build();
+            final Optional<ItemStack> alreadyContained = requiredCountForStacks.keySet().stream()
+                    .filter(itemStack -> comparator.match(itemStack)).findFirst();
+
+            if (alreadyContained.isPresent())
+            {
+                requiredCountForStacks.put(alreadyContained.get(), requiredCountForStacks.get(alreadyContained.get()) + targetStack.getCount());
+            }
+            else
+            {
+                requiredCountForStacks.put(targetStack, targetStack.getCount());
+            }
+        });
+
+        return requiredCountForStacks;
+    }
+
+    public static boolean compareItemStack(@NotNull final Matcher matcher, @NotNull final ItemStack stack)
+    {
+        return matcher.match(stack);
+    }
+
+    public static boolean compareItemStacks(@NotNull final List<Matcher> matchers, @NotNull final ItemStack stack)
+    {
+        return matchers.stream().anyMatch(matcher -> matcher.match(stack));
+    }
+
+    public static boolean compareItemStacks(@NotNull final List<ItemStack> stacks, @NotNull final Matcher matcher)
+    {
+        return stacks.stream().anyMatch(stack -> matcher.match(stack));
     }
 }
 

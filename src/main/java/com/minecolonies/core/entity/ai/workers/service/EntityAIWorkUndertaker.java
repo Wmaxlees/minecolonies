@@ -10,9 +10,11 @@ import com.minecolonies.api.entity.citizen.Skill;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.core.tileentities.TileEntityGrave;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.modules.GraveyardManagementModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingGraveyard;
@@ -188,7 +190,7 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
                 return TRY_RESURRECT;
             }
 
-            if (worker.getInventoryCitizen().isFull())
+            if (worker.getInventory().isFull())
             {
                 return INVENTORY_FULL;
             }
@@ -202,7 +204,7 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
             effortCounter = 0;
 
             //at position - try to take all item
-            if (InventoryUtils.transferAllItemHandler(((TileEntityGrave) entity).getInventory(), worker.getInventoryCitizen()))
+            if (InventoryUtils.transferAll(((TileEntityGrave) entity), worker.getInventory()))
             {
                 return TRY_RESURRECT;
             }
@@ -334,7 +336,8 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
 
             if (getTotemResurrectChance() > 0 && random.nextDouble() <= TOTEM_BREAK_CHANCE)
             {
-                worker.getInventoryCitizen().extractItem(InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), Items.TOTEM_OF_UNDYING), 1, false);
+                final Matcher totemMatcher = new Matcher.Builder(Items.TOTEM_OF_UNDYING).build();
+                worker.getInventory().extractStacks(totemMatcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
                 worker.playSound(SoundEvents.TOTEM_USE, 1.0f, 1.0f);
             }
 
@@ -393,7 +396,8 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
     {
         if (worker.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(USE_TOTEM) > 0)
         {
-            final int totems = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), Items.TOTEM_OF_UNDYING);
+            final Matcher totemMatcher = new Matcher.Builder(Items.TOTEM_OF_UNDYING).build();
+            final int totems = worker.getInventory().countMatches(totemMatcher);
 
             if (totems > 0)
             {
@@ -490,7 +494,7 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
      */
     private void equipShovel()
     {
-        worker.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, getShovelSlot());
+        worker.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.shovel.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
     }
 
     /**
@@ -498,17 +502,7 @@ public class EntityAIWorkUndertaker extends AbstractEntityAIInteract<JobUndertak
      */
     private void unequip()
     {
-        worker.getCitizenItemHandler().removeHeldItem();
-    }
-
-    /**
-     * Get's the slot in which the shovel is in.
-     *
-     * @return slot number
-     */
-    private int getShovelSlot()
-    {
-        return InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), ModEquipmentTypes.shovel.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
+        worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
     }
 
     /**

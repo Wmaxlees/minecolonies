@@ -10,7 +10,8 @@ import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import com.minecolonies.core.entity.pathfinding.PathingOptions;
 import com.minecolonies.api.items.ModItems;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.colony.buildings.modules.settings.GuardTaskSetting;
 import com.minecolonies.core.colony.jobs.AbstractJobGuard;
@@ -133,7 +134,7 @@ public class DruidCombatAI extends AttackMoveAI<EntityCitizen>
         boolean gotMaterial = false;
         BiPredicate<LivingEntity, MobEffect> predicate;
         if (user.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(DRUID_USE_POTIONS) > 0
-              && InventoryUtils.hasItemInItemHandler(user.getInventoryCitizen(), item -> item.getItem() == ModItems.magicpotion))
+              && user.getInventory().hasMatch(item -> item.getItem() == ModItems.magicpotion))
         {
             gotMaterial = true;
         }
@@ -153,7 +154,9 @@ public class DruidCombatAI extends AttackMoveAI<EntityCitizen>
 
         if (gotMaterial)
         {
-            InventoryUtils.removeStackFromItemHandler(user.getCitizenData().getInventory(), new ItemStack(ModItems.magicpotion, 1), 1);
+            final Matcher matcher = new Matcher.Builder(ModItems.magicpotion)
+                .build();
+            user.getInventory().extractStack(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
         }
 
         this.instantEffect = effect.isInstantenous();

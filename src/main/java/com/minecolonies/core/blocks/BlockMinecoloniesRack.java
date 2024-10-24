@@ -8,7 +8,6 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.permissions.Action;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.tileentities.TileEntityRack;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -217,10 +216,9 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
     public void spawnAfterBreak(final BlockState state, final ServerLevel worldIn, final BlockPos pos, final ItemStack stack, final boolean p_222953_)
     {
         final BlockEntity tileentity = worldIn.getBlockEntity(pos);
-        if (tileentity instanceof TileEntityRack)
+        if (tileentity instanceof TileEntityRack rack)
         {
-            final IItemHandler handler = ((AbstractTileEntityRack) tileentity).getInventory();
-            InventoryUtils.dropItemHandler(handler, worldIn, pos.getX(), pos.getY(), pos.getZ());
+            rack.dropAllItems(worldIn, pos);
         }
         super.spawnAfterBreak(state, worldIn, pos, stack, p_222953_);
     }
@@ -279,15 +277,9 @@ public class BlockMinecoloniesRack extends AbstractBlockMinecoloniesRack<BlockMi
         if (state.getBlock() != newState.getBlock())
         {
             BlockEntity tileEntity = worldIn.getBlockEntity(pos);
-            if (tileEntity instanceof TileEntityRack)
+            if (tileEntity instanceof TileEntityRack rack)
             {
-                TileEntityRack tileEntityRack = (TileEntityRack) tileEntity;
-                InventoryUtils.dropItemHandler(tileEntityRack.getInventory(),
-                  worldIn,
-                  tileEntityRack.getBlockPos().getX(),
-                  tileEntityRack.getBlockPos().getY(),
-                  tileEntityRack.getBlockPos().getZ());
-                worldIn.updateNeighbourForOutputSignal(pos, this);
+                rack.dropAllItems(worldIn, rack.getBlockPos());
             }
 
             super.onRemove(state, worldIn, pos, newState, isMoving);

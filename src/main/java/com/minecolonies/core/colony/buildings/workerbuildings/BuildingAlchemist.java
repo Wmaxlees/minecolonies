@@ -7,7 +7,7 @@ import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.items.ModItems;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import net.minecraft.core.BlockPos;

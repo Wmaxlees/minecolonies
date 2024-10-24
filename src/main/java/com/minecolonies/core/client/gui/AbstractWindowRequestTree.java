@@ -15,7 +15,7 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.client.gui.citizen.MainWindowCitizen;
 import com.minecolonies.core.colony.requestsystem.requesters.IBuildingBasedRequester;
@@ -425,7 +425,7 @@ public abstract class AbstractWindowRequestTree extends AbstractWindowSkeleton
                 }
                 else
                 {
-                    if (!isCreative && !InventoryUtils.hasItemInItemHandler(new InvWrapper(inventory), requestPredicate))
+                    if (!isCreative && !InventoryUtils.doesPlayerHave(mc.player, requestPredicate))
                     {
                         return false;
                     }
@@ -433,13 +433,13 @@ public abstract class AbstractWindowRequestTree extends AbstractWindowSkeleton
             }
             else
             {
-                if (!isCreative && !InventoryUtils.hasItemInItemHandler(new InvWrapper(inventory), requestPredicate))
+                if (!isCreative && !InventoryUtils.doesPlayerHave(mc.player, requestPredicate))
                 {
                     return false;
                 }
             }
 
-            if (this instanceof MainWindowCitizen && !((MainWindowCitizen) this).getCitizen().getInventory().hasSpace())
+            if (this instanceof MainWindowCitizen && ((MainWindowCitizen) this).getCitizen().getInventory().isFull())
             {
                 return false;
             }

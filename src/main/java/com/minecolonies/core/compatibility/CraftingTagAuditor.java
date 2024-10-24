@@ -12,8 +12,10 @@ import com.minecolonies.api.crafting.registry.CraftingType;
 import com.minecolonies.api.items.IMinecoloniesFoodItem;
 import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.util.FoodUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.AnimalHerdingModule;
 import com.minecolonies.core.colony.buildings.modules.SimpleCraftingModule;
 import com.minecolonies.core.colony.crafting.*;
@@ -383,13 +385,17 @@ public class CraftingTagAuditor
         {
             writeItemData(writer, item);
 
+            final Matcher matcher = new Matcher.Builder(item.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, item.getTag())
+                .build();
+
             for (final ToolUsage tool : toolUsages)
             {
                 writer.write(',');
                 for (int level = 0; level < tool.toolLevels().size(); ++level)
                 {
                     final List<ItemStack> stacks = tool.toolLevels().get(level);
-                    if (ItemStackUtils.compareItemStackListIgnoreStackSize(stacks, item, false, true))
+                    if (ItemStackUtils.compareItemStacks(stacks, matcher))
                     {
                         writer.write(Integer.toString(level));
                         break;

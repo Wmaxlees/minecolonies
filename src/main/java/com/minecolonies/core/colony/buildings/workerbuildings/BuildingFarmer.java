@@ -9,8 +9,10 @@ import com.minecolonies.api.colony.jobs.registry.JobEntry;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.util.CraftingUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.OptionalPredicate;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.client.gui.modules.FarmFieldsModuleWindow;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
@@ -108,11 +110,16 @@ public class BuildingFarmer extends AbstractBuilding
     @Override
     public boolean canEat(final ItemStack stack)
     {
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+          .compareDamage(stack.getDamageValue())
+          .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+          .build();
         for (FieldsModule module : getModulesByType(FieldsModule.class))
         {
             for (final IField field : module.getOwnedFields())
             {
-                if (field instanceof FarmField farmField && !farmField.getSeed().isEmpty() && ItemStackUtils.compareItemStacksIgnoreStackSize(farmField.getSeed(), stack))
+                if (field instanceof FarmField farmField && !farmField.getSeed().isEmpty() && ItemStackUtils
+                        .compareItemStack(matcher, farmField.getSeed()))
                 {
                     return false;
                 }

@@ -2,9 +2,11 @@ package com.minecolonies.api.colony.requestsystem.requestable;
 
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.requestsystem.factory.IFactoryController;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.ReflectionUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -309,7 +311,30 @@ public class StackList implements IConcreteDeliverable, INonExhaustiveDeliverabl
             }
         }
 
-        return ItemStackUtils.compareItemStackListIgnoreStackSize(getStacks(), stack, matchMeta, matchNBT);
+        final List<Matcher> matchers = new ArrayList<>();
+        for (final ItemStack targetStack : getStacks())
+        {
+            final Matcher.Builder builder = new Matcher.Builder(targetStack.getItem());
+            if (matchMeta)
+            {
+                builder.compareDamage(targetStack.getDamageValue());
+            }
+            if (matchNBT)
+            {
+                builder.compareNBT(ItemNBTMatcher.EXACT_MATCH, targetStack.getTag());
+            }
+            matchers.add(builder.build());
+        }
+
+        for (final Matcher matcher : matchers)
+        {
+            if (matcher.match(stack))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -382,21 +407,45 @@ public class StackList implements IConcreteDeliverable, INonExhaustiveDeliverabl
             return false;
         }
 
+        List<Matcher> matchers = new ArrayList<>();
+        for (final ItemStack targetStack : getStacks())
+        {
+            final Matcher matcher = new Matcher.Builder(targetStack.getItem())
+                .compareDamage(targetStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, targetStack.getTag())
+                .build();
+            matchers.add(matcher);
+        }
         for (final ItemStack tempStack : stack1.getStacks())
         {
-            if (!ItemStackUtils.compareItemStackListIgnoreStackSize(getStacks(), tempStack))
+            if (!ItemStackUtils.compareItemStacks(matchers, tempStack))
             {
                 return false;
             }
+        }
+
+        matchers = new ArrayList<>();
+        for (final ItemStack targetStack : stack1.getStacks())
+        {
+            final Matcher matcher = new Matcher.Builder(targetStack.getItem())
+                .compareDamage(targetStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, targetStack.getTag())
+                .build();
+            matchers.add(matcher);
         }
         for (final ItemStack tempStack : getStacks())
         {
-            if (!ItemStackUtils.compareItemStackListIgnoreStackSize(stack1.getStacks(), tempStack))
+            if (!ItemStackUtils.compareItemStacks(matchers, tempStack))
             {
                 return false;
             }
         }
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getResult(), stack1.getResult());
+
+        final Matcher matcher = new Matcher.Builder(getResult().getItem())
+            .compareDamage(getResult().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getResult().getTag())
+            .build();
+        return ItemStackUtils.compareItemStack(matcher, stack1.getResult());
     }
 
     @Override

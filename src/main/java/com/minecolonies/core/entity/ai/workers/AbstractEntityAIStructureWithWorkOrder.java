@@ -16,6 +16,7 @@ import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuildingStructureBuilder;
 import com.minecolonies.core.colony.buildings.modules.settings.BuilderModeSetting;
 import com.minecolonies.core.colony.buildings.utils.BuildingBuilderResource;
@@ -216,11 +217,15 @@ public abstract class AbstractEntityAIStructureWithWorkOrder<J extends AbstractJ
     @Override
     protected boolean checkIfNeedsItem()
     {
+        Log.getLogger().info(worker.getName().getString() + " Checking if needs item");
         if (job.hasWorkOrder() && building.getNeededResources().isEmpty() && !building.hasCitizenCompletedRequests(worker.getCitizenData()) && !recalculated && (structurePlacer == null || !structurePlacer.getB().hasBluePrint() || !job.getWorkOrder().isRequested()))
         {
+            Log.getLogger().info(worker.getName().getString() + " does not need item");
             return false;
         }
-        return super.checkIfNeedsItem();
+        final boolean result = super.checkIfNeedsItem();
+        Log.getLogger().info(worker.getName().getString() + " needs item: " + result);
+        return result;
     }
 
     @Override

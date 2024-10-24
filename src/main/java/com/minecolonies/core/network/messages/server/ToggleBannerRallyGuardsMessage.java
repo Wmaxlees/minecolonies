@@ -1,9 +1,11 @@
 package com.minecolonies.core.network.messages.server;
 
 import com.minecolonies.api.network.IMessage;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.MessageUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.FriendlyByteBuf;
@@ -68,15 +70,17 @@ public class ToggleBannerRallyGuardsMessage implements IMessage
     public void onExecute(final NetworkEvent.Context ctxIn, final boolean isLogicalServer)
     {
         final ServerPlayer player = ctxIn.getSender();
-        final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()),
-          (itemStack -> ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, banner)));
-
-        if (slot == -1)
+        final Matcher matcher = new Matcher.Builder(banner.getItem())
+            .compareDamage(banner.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, banner.getTag())
+            .build();
+        final ItemStack found = InventoryUtils.findFirstMatchInPlayer(player, matcher);
+        if (found.isEmpty())
         {
             MessageUtils.format(COM_MINECOLONIES_BANNER_RALLY_GUARDS_GUI_ERROR).sendTo(player);
             return;
         }
 
-        toggleBanner(player.getInventory().getItem(slot), player);
+        toggleBanner(found, player);
     }
 }

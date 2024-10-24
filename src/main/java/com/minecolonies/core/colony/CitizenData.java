@@ -23,6 +23,7 @@ import com.minecolonies.api.quests.IQuestInstance;
 import com.minecolonies.api.quests.IQuestManager;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Suppression;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.modules.LivingBuildingModule;
@@ -57,7 +58,6 @@ import java.util.*;
 
 import static com.minecolonies.api.entity.citizen.AbstractEntityCitizen.*;
 import static com.minecolonies.api.research.util.ResearchConstants.*;
-import static com.minecolonies.api.util.ItemStackUtils.CAN_EAT;
 import static com.minecolonies.api.util.constant.BuildingConstants.TAG_ACTIVE;
 import static com.minecolonies.api.util.constant.CitizenConstants.*;
 import static com.minecolonies.api.util.constant.ColonyConstants.UPDATE_SUBSCRIBERS_INTERVAL;
@@ -67,6 +67,7 @@ import static com.minecolonies.api.util.constant.NbtTagConstants.*;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_ID;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_NAME;
 import static com.minecolonies.api.util.constant.TranslationConstants.*;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.CAN_EAT;
 
 /**
  * Extra data for Citizens.
@@ -569,7 +570,7 @@ public class CitizenData implements ICitizenData
             final ItemStack stack;
             if (slot.isArmor())
             {
-                stack = citizen.getInventoryCitizen().getArmorInSlot(slot);
+                stack = citizen.getInventory().getArmorInSlot(slot);
             }
             else
             {
@@ -1771,11 +1772,9 @@ public class CitizenData implements ICitizenData
         }
         else
         {
-            int slotBadFood = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(inventory,
-              stack -> CAN_EAT.test(stack) && !this.getHomeBuilding().canEat(stack));
-            int slotGoodFood = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(inventory,
-              stack -> CAN_EAT.test(stack) && this.getHomeBuilding().canEat(stack));
-            return slotBadFood != -1 && slotGoodFood == -1;
+            boolean hasBadFood = inventory.hasMatch(stack -> CAN_EAT.test(stack) && !this.getHomeBuilding().canEat(stack));
+            boolean hasGoodFood = inventory.hasMatch(stack -> CAN_EAT.test(stack) && this.getHomeBuilding().canEat(stack));
+            return hasBadFood && !hasGoodFood;
         }
     }
 

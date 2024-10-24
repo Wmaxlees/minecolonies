@@ -5,23 +5,24 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.minecolonies.api.IMinecoloniesAPI;
 import com.minecolonies.api.MinecoloniesAPIProxy;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.research.*;
 import com.minecolonies.api.research.costs.IResearchCost;
 import com.minecolonies.api.research.effects.IResearchEffect;
 import com.minecolonies.api.research.util.ResearchState;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.MineColonies;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 
@@ -380,7 +381,7 @@ public class GlobalResearch implements IGlobalResearch
     }
 
     @Override
-    public boolean hasEnoughResources(final IItemHandler inventory)
+    public boolean hasEnoughResources(final Player player)
     {
         if (costList.isEmpty())
         {
@@ -392,7 +393,7 @@ public class GlobalResearch implements IGlobalResearch
             int totalCount = 0;
             for (final Item cost : ingredient.getItems())
             {
-                final int count = InventoryUtils.getItemCountInItemHandler(inventory, stack -> stack.getItem().equals(cost));
+                final int count = InventoryUtils.countInPlayersInventory(player, stack -> stack.getItem().equals(cost));
                 totalCount += count;
             }
             if (totalCount < ingredient.getCount())

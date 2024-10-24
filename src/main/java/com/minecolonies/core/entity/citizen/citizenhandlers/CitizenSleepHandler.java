@@ -14,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.block.BedBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -120,7 +121,7 @@ public class CitizenSleepHandler implements ICitizenSleepHandler
         citizen.hasImpulse = true;
 
         //Remove item while citizen is asleep.
-        citizen.getCitizenItemHandler().removeHeldItem();
+        citizen.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
 
         setIsAsleep(true);
 

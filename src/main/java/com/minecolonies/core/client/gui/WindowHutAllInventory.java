@@ -10,6 +10,8 @@ import com.minecolonies.core.tileentities.TileEntityRack;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.Utils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.client.render.worldevent.HighlightManager;
 import com.minecolonies.core.client.render.worldevent.highlightmanager.TimedBoxRenderData;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
@@ -125,10 +127,14 @@ public class WindowHutAllInventory extends AbstractWindowSkeleton
 
         for (BlockPos blockPos : containerList)
         {
-            final BlockEntity rack = Minecraft.getInstance().level.getBlockEntity(blockPos);
-            if (rack instanceof TileEntityRack)
+            final BlockEntity entity = Minecraft.getInstance().level.getBlockEntity(blockPos);
+            if (entity instanceof TileEntityRack rack)
             {
-                int count = ((TileEntityRack) rack).getCount(storage.getItemStack(), storage.ignoreDamageValue(), false);
+                final Matcher matcher = new Matcher.Builder(storage.getItem())
+                    .compareDamage(storage.getItemStack().getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, storage.getItemStack().getTag())
+                    .build();
+                int count = rack.countMatches(matcher);
                 if (count > 0)
                 {
                     // Varies the color between red(1 pc) over yellow(32 pcs) to green(64+ pcs)
@@ -201,20 +207,22 @@ public class WindowHutAllInventory extends AbstractWindowSkeleton
 
         for (final BlockPos blockPos : containerList)
         {
-            final BlockEntity rack = world.getBlockEntity(blockPos);
-            if (rack instanceof TileEntityRack)
+            final BlockEntity entity = world.getBlockEntity(blockPos);
+            if (entity instanceof TileEntityRack rack)
             {
-                final Map<ItemStorage, Integer> rackStorage = ((TileEntityRack) rack).getAllContent();
+                final Map<ItemStack, Integer> rackStorage = rack.getAllItems();
 
-                for (final Map.Entry<ItemStorage, Integer> entry : rackStorage.entrySet())
+                for (final Map.Entry<ItemStack, Integer> entry : rackStorage.entrySet())
                 {
-                    if (storedItems.containsKey(entry.getKey()))
+                    ItemStorage storage = new ItemStorage(entry.getKey());
+                    int count = entry.getValue();
+                    if (storedItems.containsKey(storage))
                     {
-                        storedItems.put(entry.getKey(), storedItems.get(entry.getKey()) + entry.getValue());
+                        storedItems.put(storage, storedItems.get(storage) + count);
                     }
                     else
                     {
-                        storedItems.put(entry.getKey(), entry.getValue());
+                        storedItems.put(storage, count);
                     }
                 }
             }

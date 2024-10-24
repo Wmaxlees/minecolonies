@@ -34,13 +34,20 @@ import com.minecolonies.api.colony.requestsystem.resolver.retrying.IRetryingRequ
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.colony.workorders.IWorkOrder;
 import com.minecolonies.api.colony.workorders.WorkOrderType;
+import com.minecolonies.api.crafting.ExactMatchItemStorage;
 import com.minecolonies.api.crafting.ItemStorage;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TypeConstants;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.Colony;
 import com.minecolonies.core.colony.buildings.modules.AbstractAssignedCitizenModule;
 import com.minecolonies.core.colony.buildings.modules.settings.BoolSetting;
@@ -66,26 +73,26 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.AirBlock;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.List;
 
 import static com.minecolonies.api.util.constant.BuildingConstants.CONST_DEFAULT_MAX_BUILDING_LEVEL;
 import static com.minecolonies.api.util.constant.BuildingConstants.NO_WORK_ORDER;
+import static com.minecolonies.api.util.constant.ColonyConstants.rand;
 import static com.minecolonies.api.util.constant.Constants.MOD_ID;
 import static com.minecolonies.api.util.constant.NbtTagConstants.*;
 import static com.minecolonies.api.util.constant.Suppression.GENERIC_WILDCARD;
@@ -428,15 +435,8 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         final Level world = colony.getWorld();
         final Block block = world.getBlockState(this.getPosition()).getBlock();
 
-        if (tileEntityNew != null)
-        {
-            InventoryUtils.dropItemHandler(tileEntityNew.getInventory(),
-              world,
-              tileEntityNew.getPosition().getX(),
-              tileEntityNew.getPosition().getY(),
-              tileEntityNew.getPosition().getZ());
-            world.updateNeighbourForOutputSignal(this.getPosition(), block);
-        }
+        tileEntityNew.dropAllItems(world, getPosition());
+        world.updateNeighbourForOutputSignal(this.getPosition(), block);
 
         ChunkDataHelper.claimBuildingChunks(colony, false, this.getID(), getClaimRadius(getBuildingLevel()), getCorners());
         ConstructionTapeHelper.removeConstructionTape(getCorners(), world);
@@ -867,7 +867,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         compoundNBT.putInt(TAG_COLONY_ID, this.getColony().getID());
         compoundNBT.putInt(TAG_OTHER_LEVEL, this.getBuildingLevel());
         stack.setTag(compoundNBT);
-        if (InventoryUtils.addItemStackToProvider(player, stack))
+        if (InventoryUtils.insertInPlayerInventory(player, stack))
         {
             this.destroy();
             colony.getWorld().destroyBlock(this.getPosition(), false);
@@ -1132,7 +1132,13 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
             }
         }
         toKeep.putAll(requiredItems.entrySet().stream()
-          .collect(Collectors.toMap(key -> (stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, key.getKey().getItemStack())), Map.Entry::getValue)));
+                .collect(Collectors.toMap(key -> (stack -> {
+                    final Matcher matcher = new Matcher.Builder(stack.getItem())
+                        .compareDamage(stack.getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+                        .build();
+                    return ItemStackUtils.compareItemStack(matcher, key.getKey().getItemStack());
+                }), Map.Entry::getValue)));
 
         if (keepFood())
         {
@@ -1160,27 +1166,29 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     }
 
     @Override
-    public List<IItemHandler> getHandlers()
+    public List<IInventory> getInventories()
     {
         if (this.getAllAssignedCitizen().isEmpty() || colony == null || colony.getWorld() == null)
         {
             return Collections.emptyList();
         }
 
-        final Set<IItemHandler> handlers = new HashSet<>();
-        for (final ICitizenData workerEntity : this.getAllAssignedCitizen())
+        final Set<IInventory> inventories = new HashSet<>();
+        if (getTileEntity() != null)
         {
-            handlers.add(workerEntity.getInventory());
+            inventories.add(getTileEntity());
         }
 
-        final BlockEntity entity = colony.getWorld().getBlockEntity(getID());
-        if (entity != null)
+        for (final BlockPos pos : containerList)
         {
-            final LazyOptional<IItemHandler> handler = entity.getCapability(ForgeCapabilities.ITEM_HANDLER, null);
-            handler.ifPresent(handlers::add);
+            final BlockEntity tempTileEntity = colony.getWorld().getBlockEntity(pos);
+            if (tempTileEntity instanceof IInventory inventory)
+            {
+                inventories.add(inventory);
+            }
         }
 
-        return ImmutableList.copyOf(handlers);
+        return ImmutableList.copyOf(inventories);
     }
 
     @Override
@@ -1224,44 +1232,6 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         return true;
     }
 
-    /**
-     * Try to transfer a stack to one of the inventories of the building and force the transfer.
-     *
-     * @param stack the stack to transfer.
-     * @param world the world to do it in.
-     * @return the itemStack which has been replaced or the itemStack which could not be transfered
-     */
-    @Override
-    @Nullable
-    public ItemStack forceTransferStack(final ItemStack stack, final Level world)
-    {
-        if (getTileEntity() == null)
-        {
-            for (final BlockPos pos : containerList)
-            {
-                final BlockEntity tempTileEntity = world.getBlockEntity(pos);
-                if (tempTileEntity instanceof ChestBlockEntity && !InventoryUtils.isProviderFull(tempTileEntity))
-                {
-                    return forceItemStackToProvider(tempTileEntity, stack);
-                }
-            }
-        }
-        else
-        {
-            return forceItemStackToProvider(getTileEntity(), stack);
-        }
-        return stack;
-    }
-
-    @Nullable
-    private ItemStack forceItemStackToProvider(@NotNull final ICapabilityProvider provider, @NotNull final ItemStack itemStack)
-    {
-        final List<ItemStorage> localAlreadyKept = new ArrayList<>();
-        return InventoryUtils.forceItemStackToProvider(provider,
-          itemStack,
-          (ItemStack stack) -> EntityAIWorkDeliveryman.workerRequiresItem(this, stack, localAlreadyKept) != stack.getCount());
-    }
-
     //------------------------- Ending Required Tools/Item handling -------------------------//
 
     //------------------------- !START! RequestSystem handling for minecolonies buildings -------------------------//
@@ -1274,6 +1244,11 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
             return false;
         }
 
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+          .compareDamage(stack.getDamageValue())
+          .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+          .build();
+
         for (final AbstractAssignedCitizenModule module : getModulesByType(AbstractAssignedCitizenModule.class))
         {
             for (final ICitizenData citizen : module.getAssignedCitizen())
@@ -1282,7 +1257,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
                 {
                     for (final ItemStack deliveryStack : request.getDeliveries())
                     {
-                        if (ItemStackUtils.compareItemStacksIgnoreStackSize(deliveryStack, stack, false, true))
+                        if (ItemStackUtils.compareItemStack(matcher, deliveryStack))
                         {
                             return true;
                         }
@@ -1490,6 +1465,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
 
         for (final IToken<?> token : getOpenRequestsByCitizen().get(citizen.getId()))
         {
+            Log.getLogger().info("Checking sync request with token: " + token);
             if (!citizen.isRequestAsync(token))
             {
                 return true;
@@ -2069,4 +2045,388 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     }
 
     //------------------------- !END! RequestSystem handling for minecolonies buildings -------------------------//
+
+    @Override
+    public boolean isEmpty()
+    {
+        return cache.isEmpty();
+    }
+
+    @Override
+    public boolean isFull()
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            if (!inventory.isFull())
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
+    public boolean hasMatch(@NotNull Matcher matcher)
+    {
+        return cache.hasMatch(matcher);
+    }
+
+    @Override
+    public boolean hasMatch(Predicate<ItemStack> predicate)
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            if (inventory.hasMatch(predicate))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public List<ItemStack> findMatches(@NotNull Predicate<ItemStack> predicate)
+    {
+        final List<ItemStack> list = new ArrayList<>();
+        for (final IInventory inventory : getInventories())
+        {
+            list.addAll(inventory.findMatches(predicate));
+        }
+
+        return list;
+    }
+
+    @Override
+    public @NotNull List<ItemStack> findMatches(@NotNull Block block)
+    {
+        final Matcher matcher = new Matcher.Builder(ItemStackUtils.getItemFromBlock(block)).build();
+        return findMatches(matcher);
+    }
+
+    @Override
+    public @NotNull List<ItemStack> findMatches(@NotNull Matcher matcher)
+    {
+        return cache.findMatches(matcher);
+    }
+
+    @Override
+    public ItemStack findFirstMatch(Predicate<ItemStack> predicate)
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            final ItemStack stack = inventory.findFirstMatch(predicate);
+            if (!ItemStackUtils.isEmpty(stack))
+            {
+                return stack;
+            }
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public ItemStack findFirstMatch(@NotNull Matcher matcher)
+    {
+        return cache.findFirstMatch(matcher);
+    }
+
+    @Override
+    public int countMatches(Predicate<ItemStack> predicate)
+    {
+        int matches = 0;
+        for (final IInventory inventory : getInventories())
+        {
+            matches += inventory.countMatches(predicate);
+        }
+
+        return matches;
+    }
+
+    @Override
+    public int countMatches(@NotNull Matcher matcher)
+    {
+        return cache.countMatches(matcher);
+    }
+
+    @Override
+    public Map<ItemStack, Integer> getAllItems()
+    {
+        return cache.getAllItems();
+    }
+
+    @Override
+    public List<ItemStack> extractStacks(Predicate<ItemStack> predicate, int count, ItemCountType countType, boolean simulate)
+    {
+        return extractInternal(inventory -> inventory.countMatches(predicate),
+                (c, t) -> inventory -> inventory.extractStacks(predicate, c, t, simulate), count, countType);
+    }
+
+    @Override
+    public List<ItemStack> extractStacks(@NotNull final Matcher matcher, int count, ItemCountType countType, boolean simulate)
+    {
+        return extractInternal(inventory -> inventory.countMatches(matcher),
+                (c, t) -> inventory -> inventory.extractStacks(matcher, count, countType, simulate), matcher.getTargetCount(), matcher.getCountType());
+    }
+
+    private List<ItemStack> extractInternal(Function<IInventory, Integer> countFunc,
+            BiFunction<Integer, ItemCountType, Function<IInventory, List<ItemStack>>> extractFunc, int count,
+            ItemCountType countType)
+    {
+        int found = 0;
+        final List<IInventory> inventories = getInventories();
+        for (int i = 0; i < inventories.size(); ++i)
+        {
+            found += countFunc.apply(inventories.get(i));
+            if (countType.isSufficient(found, count))
+            {
+                break;
+            }
+        }
+
+        if (!countType.isSufficient(found, count))
+        {
+            return List.of();
+        }
+
+        List<ItemStack> extracted = new ArrayList<>();
+        found = 0;
+        for (int i = 0; i < inventories.size(); ++i)
+        {
+            final List<ItemStack> singleExtract = extractFunc.apply(0, ItemCountType.IGNORE_COUNT).apply(inventories.get(i));
+            for (ItemStack stack : singleExtract)
+            {
+                found += stack.getCount();
+            }
+
+            extracted.addAll(singleExtract);
+
+            if (countType.getRemaining(found, count) <= 0)
+            {
+                break;
+            }
+        }
+
+        return extracted;
+    }
+
+    @Override
+    public ItemStack insert(@Nullable ItemStack itemStack, boolean simulate)
+    {
+        ItemStack result = itemStack.copy();
+        for (final IInventory inventory : getInventories())
+        {
+            result = inventory.insert(itemStack, simulate);
+            if (ItemStackUtils.isEmpty(result))
+            {
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    @Override
+    public List<ItemStack> insert(@Nullable List<ItemStack> itemStacks, boolean simulate)
+    {
+        final List<ItemStack> result = new ArrayList<>();
+        for (final ItemStack itemStack : itemStacks)
+        {
+            result.add(insert(itemStack, simulate));
+        }
+
+        return result;
+    }
+
+    @Override
+    public Map<ExactMatchItemStorage, Integer> removeSortableItemStacks()
+    {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'removeSortableItemStacks'");
+    }
+
+    @Override
+    public ListTag backupItems()
+    {
+        ListTag tag = new ListTag();
+        for (final IInventory inventory : getInventories())
+        {
+            final ListTag invTag = inventory.backupItems();
+            tag.add(invTag);
+        }
+
+        return tag;
+    }
+
+    @Override
+    public void restoreItems(ListTag tag)
+    {
+        final List<IInventory> inventories = getInventories();
+        for (int i = 0; i < tag.size(); ++i)
+        {
+            inventories.get(i).restoreItems(tag.getList(i));
+        }
+    }
+
+    @Override
+    public List<Matcher> findMissing(@NotNull List<Matcher> matchers)
+    {
+        List<Matcher> missing = new ArrayList<>();
+        for (final IInventory inventory : getInventories())
+        {
+            missing = inventory.findMissing(missing);
+            if (missing.isEmpty())
+            {
+                return List.of();
+            }
+        }
+
+        return missing;
+    }
+
+    @Override
+    public boolean hasSpaceFor(List<ItemStack> itemStacks, boolean ignoreContents)
+    {
+        // TODO: Can we actually check whether the inventories have space together rather
+        // than if one of them can fit all the items.
+        for (final IInventory inventory : getInventories())
+        {
+            if (inventory.hasSpaceFor(itemStacks, ignoreContents))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public void dropAllItems(Level level, BlockPos pos)
+    {
+        throw new UnsupportedOperationException("Method 'dropAllItems' should not be called on an AbstractBuilding.");
+    }
+
+    @Override
+    public ItemStack forceInsert(@NotNull ItemStack itemStack, @NotNull Predicate<ItemStack> toKeep, boolean simulate)
+    {
+        final List<IInventory> inventories = getInventories();
+
+        ItemStack result = itemStack.copy();
+        for (final IInventory inventory : inventories)
+        {
+            result = inventory.insert(itemStack, simulate);
+
+            if (result.isEmpty())
+            {
+                return ItemStack.EMPTY;
+            }
+        }
+
+        if (inventories.size() > 0)
+        {
+            result = inventories.get(0).forceInsert(result, toKeep, simulate);
+        }
+        
+        return result;
+    }
+
+    @Override
+    public List<ItemStack> findMatches(@NotNull List<Matcher> matchers)
+    {
+        return cache.findMatches(matchers);
+    }
+
+    @Override
+    public int countMatches(@NotNull List<Matcher> matchers)
+    {
+        return cache.countMatches(matchers);
+    }
+
+    @Override
+    public ItemStack extractStack(Predicate<ItemStack> predicate, int count, ItemCountType countType,
+            boolean simulate)
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            final ItemStack result = inventory.extractStack(predicate, count, countType, simulate);
+            if (!ItemStackUtils.isEmpty(result))
+            {
+                return result;
+            }
+        }
+
+        return ItemStack.EMPTY;
+    }
+
+    @Override
+    public ItemStack extractStack(@NotNull Matcher matcher, int count, ItemCountType countType,
+            boolean simulate)
+    {
+        return extractStack(matcher::match, count, countType, simulate);
+    }
+
+    @Override
+    public void clear()
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            inventory.clear();
+        }
+    }
+
+    @Override
+    public boolean reduceStackSize(@NotNull Matcher matcher, int amount)
+    {
+        return reduceStackSize(matcher::match, amount);
+    }
+
+    @Override
+    public boolean reduceStackSize(Predicate<ItemStack> predicate, int amount)
+    {
+        for (final IInventory inventory : getInventories())
+        {
+            final boolean result = inventory.reduceStackSize(predicate, amount);
+            if (result)
+            {
+                return result;
+            }
+        }
+
+        return false;
+    }
+
+    @Override
+    public ItemStack maybeExtractRandomStack(int amount)
+    {
+        final List<IInventory> inventories = getInventories();
+        final int randomInventory = rand.nextInt(inventories.size());
+        return inventories.get(randomInventory).maybeExtractRandomStack(amount);
+    }
+
+    @Override
+    public boolean hasSimilar(Item item)
+    {
+        return cache.hasSimilar(item);
+    }
+
+    @Override
+    public float getPercentFull()
+    {
+        // We're just averaging the percent full of all inventories. This is not going
+        // to be accurate if the inventories have different sizes.
+        final List<IInventory> inventories = getInventories();
+        if (inventories.isEmpty())
+        {
+            return 100;
+        }
+
+        float total = 0;
+        for (final IInventory inventory : inventories)
+        {
+            total += inventory.getPercentFull();
+        }
+
+        return total / inventories.size();
+    }
 }

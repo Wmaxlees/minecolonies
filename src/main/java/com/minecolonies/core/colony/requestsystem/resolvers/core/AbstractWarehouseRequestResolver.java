@@ -16,11 +16,11 @@ import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Deliver
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.Colony;
 import com.minecolonies.core.colony.buildings.modules.BuildingModules;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingWareHouse;
@@ -175,12 +175,12 @@ public abstract class AbstractWarehouseRequestResolver extends AbstractRequestRe
             totalAvailable -= ((INonExhaustiveDeliverable) request.getRequest()).getLeftOver();
         }
 
-        final List<Tuple<ItemStack, BlockPos>> inv = wareHouse.getMatchingItemStacksInWarehouse(itemStack -> request.getRequest().matches(itemStack));
-        for (final Tuple<ItemStack, BlockPos> stack : inv)
+        final List<ItemStack> inv = wareHouse.findMatches(itemStack -> request.getRequest().matches(itemStack));
+        for (final ItemStack stack : inv)
         {
-            if (!stack.getA().isEmpty())
+            if (!stack.isEmpty())
             {
-                totalAvailable += stack.getA().getCount();
+                totalAvailable += stack.getCount();
             }
         }
 
@@ -223,38 +223,39 @@ public abstract class AbstractWarehouseRequestResolver extends AbstractRequestRe
 
         final int keep = completedRequest.getRequest() instanceof INonExhaustiveDeliverable ? ((INonExhaustiveDeliverable) completedRequest.getRequest()).getLeftOver() : 0;
 
-        final List<Tuple<ItemStack, BlockPos>> targetStacks = wareHouse.getMatchingItemStacksInWarehouse(itemStack -> completedRequest.getRequest().matches(itemStack));
-        for (final Tuple<ItemStack, BlockPos> tuple : targetStacks)
+        final List<ItemStack> targetStacks = wareHouse.findMatches(itemStack -> completedRequest.getRequest().matches(itemStack));
+        for (final ItemStack stack : targetStacks)
         {
-            if (ItemStackUtils.isEmpty(tuple.getA()))
+            if (ItemStackUtils.isEmpty(stack))
             {
                 continue;
             }
 
-            int leftOver = tuple.getA().getCount();
+            int leftOver = stack.getCount();
             if (keep > 0)
             {
-                int kept = storages.getOrDefault(new ItemStorage(tuple.getA()), 0);
+                int kept = storages.getOrDefault(new ItemStorage(stack), 0);
                 if (kept < keep)
                 {
                     if (leftOver + kept <= keep)
                     {
-                        storages.put(new ItemStorage(tuple.getA()), storages.getOrDefault(new ItemStorage(tuple.getA()), 0) + tuple.getA().getCount());
+                        storages.put(new ItemStorage(stack), storages.getOrDefault(new ItemStorage(stack), 0) + stack.getCount());
                         continue;
                     }
                     int toKeep = (leftOver + kept) - keep;
                     leftOver -= toKeep;
-                    storages.put(new ItemStorage(tuple.getA()), storages.getOrDefault(new ItemStorage(tuple.getA()), 0) + toKeep);
+                    storages.put(new ItemStorage(stack), storages.getOrDefault(new ItemStorage(stack), 0) + toKeep);
                 }
             }
 
             int count = Math.min(remainingCount, leftOver);
-            final ItemStack matchingStack = tuple.getA().copy();
+            final ItemStack matchingStack = stack.copy();
             matchingStack.setCount(count);
 
             completedRequest.addDelivery(matchingStack);
 
-            final ILocation itemStackLocation = manager.getFactoryController().getNewInstance(TypeConstants.ILOCATION, tuple.getB(), wareHouse.getLevel().dimension());
+            final BlockPos pos = wareHouse.getInventoryLocation(stack);
+            final ILocation itemStackLocation = manager.getFactoryController().getNewInstance(TypeConstants.ILOCATION, pos, wareHouse.getLevel().dimension());
 
             final Delivery delivery =
               new Delivery(itemStackLocation, completedRequest.getRequester().getLocation(), matchingStack, getDefaultDeliveryPriority(true));

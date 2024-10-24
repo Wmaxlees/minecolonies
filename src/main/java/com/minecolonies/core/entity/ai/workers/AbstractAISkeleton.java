@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.ai.workers;
 
+import com.ldtteam.blockui.mod.Log;
 import com.minecolonies.api.colony.jobs.IJob;
 import com.minecolonies.api.entity.ai.ITickingStateAI;
 import com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState;
@@ -9,7 +10,8 @@ import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickRate
 import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickingTransition;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.util.CompatibilityUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
@@ -94,6 +96,7 @@ public abstract class AbstractAISkeleton<J extends IJob<?>> implements ITickingS
      */
     public final IAIState getState()
     {
+        Log.getLogger().info("Worker: " + worker.getName().getString() + " is in state: " + stateMachine.getState().toString());
         return stateMachine.getState();
     }
 
@@ -149,10 +152,10 @@ public abstract class AbstractAISkeleton<J extends IJob<?>> implements ITickingS
         worker.setItemSlot(EquipmentSlot.OFFHAND, ItemStackUtils.EMPTY);
         worker.setItemSlot(EquipmentSlot.MAINHAND, ItemStackUtils.EMPTY);
 
-        worker.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.CHEST);
-        worker.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.FEET);
-        worker.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.HEAD);
-        worker.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.LEGS);
+        worker.getInventory().moveArmorToInventory(EquipmentSlot.CHEST);
+        worker.getInventory().moveArmorToInventory(EquipmentSlot.FEET);
+        worker.getInventory().moveArmorToInventory(EquipmentSlot.HEAD);
+        worker.getInventory().moveArmorToInventory(EquipmentSlot.LEGS);
     }
 
     /**

@@ -6,8 +6,10 @@ import com.minecolonies.api.colony.buildings.modules.ICraftingBuildingModule;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.IRecipeStorage;
 import com.minecolonies.api.crafting.registry.CraftingType;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.AnimalHerdingModule;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -86,10 +88,20 @@ public final class RecipeAnalyzer
             {
                 // this is a multi-output recipe; assume it replaces a bunch of vanilla
                 // recipes we already added above
+                final Matcher matcher = new Matcher.Builder(recipeStorage.getPrimaryOutput().getItem())
+                        .compareDamage(recipeStorage.getPrimaryOutput().getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, recipeStorage.getPrimaryOutput().getTag())
+                        .build();
                 recipes.removeIf(r -> ItemStackUtils.isNotEmpty(r.getPrimaryOutput()) &&
-                        ItemStackUtils.compareItemStacksIgnoreStackSize(recipeStorage.getPrimaryOutput(), r.getPrimaryOutput()));
+                        ItemStackUtils.compareItemStack(matcher, r.getPrimaryOutput()));
                 recipes.removeIf(r -> recipeStorage.getAlternateOutputs().stream()
-                        .anyMatch(s -> ItemStackUtils.compareItemStacksIgnoreStackSize(s, r.getPrimaryOutput())));
+                        .anyMatch(s -> {
+                            final Matcher sMatcher = new Matcher.Builder(s.getItem())
+                                    .compareDamage(s.getDamageValue())
+                                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, s.getTag())
+                                    .build();
+                            return ItemStackUtils.compareItemStack(sMatcher, r.getPrimaryOutput());
+                        }));
             }
             recipes.add(GenericRecipeUtils.create(customRecipe, recipeStorage));
         }

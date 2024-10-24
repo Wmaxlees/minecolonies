@@ -2,9 +2,10 @@ package com.minecolonies.core.entity.ai.workers;
 
 import com.minecolonies.api.entity.ai.workers.util.IBuilderUndestroyable;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.MathUtils;
+import com.minecolonies.api.util.inventory.ItemHandlerUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.jobs.AbstractJob;
@@ -210,7 +211,7 @@ public abstract class AbstractEntityAIInteract<J extends AbstractJob<?, J>, B ex
             //add the drops to the citizen
             for (final ItemStack item : localItems)
             {
-                InventoryUtils.transferItemStackIntoNextBestSlotInItemHandler(item, worker.getInventoryCitizen());
+                worker.getInventory().insert(item, false);
             }
             onBlockDropReception(localItems);
         }
@@ -229,7 +230,8 @@ public abstract class AbstractEntityAIInteract<J extends AbstractJob<?, J>, B ex
 
         if (tool != ItemStack.EMPTY && damageTool)
         {
-            tool.getItem().inventoryTick(tool, world, worker, worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(tool.getItem()), true);
+            final Matcher matcher = new Matcher.Builder(tool.getItem()).build();
+            tool.getItem().inventoryTick(tool, world, worker, ItemHandlerUtils.findFirstSlotMatching(worker.getInventory().getItemHandler(), matcher), true);
         }
         worker.getCitizenExperienceHandler().addExperience(XP_PER_BLOCK);
         this.incrementActionsDone();

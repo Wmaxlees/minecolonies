@@ -11,6 +11,11 @@ import com.minecolonies.api.research.effects.IResearchEffect;
 import com.minecolonies.api.research.effects.IResearchEffectManager;
 import com.minecolonies.api.research.util.ResearchState;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.event.QuestObjectiveEventHandler;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -19,6 +24,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.wrapper.InvWrapper;
 
 import java.util.*;
@@ -158,8 +164,7 @@ public class LocalResearchTree implements ILocalResearchTree
                 colony.getResearchManager().markDirty();
                 return;
             }
-            final InvWrapper playerInv = new InvWrapper(player.getInventory());
-            if (!research.hasEnoughResources(playerInv))
+            if (!research.hasEnoughResources(player))
             {
                 MessageUtils.format("com.minecolonies.coremod.research.costnotavailable", MutableComponent.create(research.getName())).sendTo(player);
                 SoundUtils.playErrorSound(player, player.blockPosition());
@@ -184,14 +189,15 @@ public class LocalResearchTree implements ILocalResearchTree
 
                 for (Item item : cost.getItems())
                 {
-                    final List<Integer> slotsWithMaterial = InventoryUtils.findAllSlotsInItemHandlerWith(playerInv, stack -> stack.getItem().equals(item));
-                    for (Integer slotNum : slotsWithMaterial)
+                    while (toRemoveLeft >= 0)
                     {
-                        toRemoveLeft = toRemoveLeft - playerInv.extractItem(slotNum, toRemoveLeft, false).getCount();
-                        if (toRemoveLeft <= 0)
+                        ItemStack extracted = InventoryUtils.extractItemFromPlayerInventory(player, stack -> stack.getItem().equals(item), toRemoveLeft, ItemCountType.MATCH_COUNT_EXACTLY, false);
+                        if (extracted.isEmpty())
                         {
                             break;
                         }
+
+                        toRemoveLeft -= extracted.getCount();
                     }
                 }
             }
@@ -254,8 +260,17 @@ public class LocalResearchTree implements ILocalResearchTree
                 final InvWrapper playerInv = new InvWrapper(player.getInventory());
                 for (final ItemStorage cost : costList)
                 {
-                    final int count = InventoryUtils.getItemCountInItemHandler(playerInv,
-                      stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, cost.getItemStack(), !cost.ignoreDamageValue(), !cost.ignoreNBT()));
+                    final Matcher.Builder builder = new Matcher.Builder(cost.getItem());
+                    if (!cost.ignoreDamageValue())
+                    {
+                        builder.compareDamage(cost.getItemStack().getDamageValue());
+                    }
+                    if (!cost.ignoreNBT())
+                    {
+                        builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, cost.getItemStack().getTag());
+                    }
+                    final int count = InventoryUtils.countInPlayersInventory(player,
+                      stack -> ItemStackUtils.compareItemStack(builder.build(), stack));
                     if (count < cost.getAmount())
                     {
                         MessageUtils.format("com.minecolonies.coremod.research.costnotavailable",
@@ -266,16 +281,24 @@ public class LocalResearchTree implements ILocalResearchTree
                 }
                 for (ItemStorage cost : costList)
                 {
-                    final List<Integer> slotsWithMaterial = InventoryUtils.findAllSlotsInItemHandlerWith(playerInv,
-                      stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, cost.getItemStack(), !cost.ignoreDamageValue(), !cost.ignoreNBT()));
-                    int amount = cost.getAmount();
-                    for (Integer slotNum : slotsWithMaterial)
+                    final Matcher.Builder builder = new Matcher.Builder(cost.getItem());
+                    if (!cost.ignoreDamageValue())
                     {
-                        amount = amount - playerInv.extractItem(slotNum, amount, false).getCount();
-                        if (amount <= 0)
+                        builder.compareDamage(cost.getItemStack().getDamageValue());
+                    }
+                    if (!cost.ignoreNBT())
+                    {
+                        builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, cost.getItemStack().getTag());
+                    }
+                    int amount = cost.getAmount();
+                    while (amount > 0)
+                    {
+                        final ItemStack extracted = InventoryUtils.extractItemFromPlayerInventory(player, builder.build(), amount, ItemCountType.MATCH_COUNT_EXACTLY, false);
+                        if (extracted.isEmpty())
                         {
                             break;
                         }
+                        amount -= extracted.getCount();
                     }
                 }
             }

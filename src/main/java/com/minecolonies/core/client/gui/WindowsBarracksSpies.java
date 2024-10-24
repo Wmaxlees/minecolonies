@@ -3,9 +3,12 @@ package com.minecolonies.core.client.gui;
 import com.ldtteam.blockui.controls.*;
 import com.ldtteam.blockui.views.BOWindow;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
+import com.minecolonies.api.inventory.IInventory;
+import com.minecolonies.api.inventory.InventoryRack;
 import com.minecolonies.core.tileentities.TileEntityRack;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.server.colony.HireSpiesMessage;
 import net.minecraft.client.Minecraft;
@@ -68,10 +71,12 @@ public class WindowsBarracksSpies extends BOWindow implements ButtonHandler
         findPaneOfTypeByID(SPIES_BUTTON_ICON, ItemIcon.class).setItem(Items.GOLD_INGOT.getDefaultInstance());
         findPaneOfTypeByID(GOLD_COST_LABEL, Text.class).setText(Component.literal("x5"));
 
-        final IItemHandler rackInv = ((TileEntityRack) buildingView.getColony().getWorld().getBlockEntity(buildingPos)).getInventory();
-        final IItemHandler playerInv = new InvWrapper(Minecraft.getInstance().player.getInventory());
-        int goldCount = InventoryUtils.getItemCountInItemHandler(playerInv, Items.GOLD_INGOT);
-        goldCount += InventoryUtils.getItemCountInItemHandler(rackInv, Items.GOLD_INGOT);
+        int goldCount = InventoryUtils.countInPlayersInventory(Minecraft.getInstance().player, Items.GOLD_INGOT);
+        if (buildingView.getColony().getWorld().getBlockEntity(buildingPos) instanceof IInventory buildingInventory)
+        {
+            final Matcher goldMatcher = new Matcher.Builder(Items.GOLD_INGOT).build();
+            goldCount += buildingInventory.countMatches(goldMatcher);
+        }
 
         if (!buildingView.getColony().isRaiding() || goldCount < GOLD_COST || buildingView.getColony().areSpiesEnabled())
         {

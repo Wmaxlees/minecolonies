@@ -4,7 +4,7 @@ import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.inventory.container.ContainerCraftingBrewingstand;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.moduleviews.CraftingModuleView;
 import com.minecolonies.core.colony.buildings.views.AbstractBuildingView;

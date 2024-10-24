@@ -15,8 +15,9 @@ import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.IRecipeStorage;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.util.CraftingUtils;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.requestsystem.requesters.IBuildingBasedRequester;
 import net.minecraft.world.item.ItemStack;
@@ -131,7 +132,11 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
             return null;
         }
 
-        final IRecipeStorage fullfillableCrafting = module.getFirstFulfillableRecipe(itemStack -> ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack), count, true);
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+            .build();
+        final IRecipeStorage fullfillableCrafting = module.getFirstFulfillableRecipe(itemStack -> ItemStackUtils.compareItemStack(matcher, itemStack), count, true);
         if (fullfillableCrafting != null)
         {
             return ImmutableList.of();
@@ -166,20 +171,23 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
             {
                 final ItemStack craftingHelperStack = ingredient.getItemStack().copy();
                 final ItemStack container = ingredient.getItemStack().getCraftingRemainingItem();
+                final Matcher matcher = new Matcher.Builder(craftingHelperStack.getItem())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, craftingHelperStack.getTag())
+                    .build();
                 //if recipe secondary produces craftinghelperstack, don't add it by count, add it once. If it's in the tools list, check to see if we need it first. 
-                if(!storage.getSecondaryOutputs().isEmpty() && ItemStackUtils.compareItemStackListIgnoreStackSize(storage.getSecondaryOutputs(), craftingHelperStack, false, true))
+                if(!storage.getSecondaryOutputs().isEmpty() && ItemStackUtils.compareItemStacks(storage.getSecondaryOutputs(), matcher))
                 {
                     materialRequests.add(createNewRequestForStack(manager, craftingHelperStack, ingredient.getAmount(), ingredient.getAmount(), false));
                 }
-                else if(!storage.getCraftingTools().isEmpty() && ItemStackUtils.compareItemStackListIgnoreStackSize(storage.getCraftingTools(), craftingHelperStack, false, true))
+                else if(!storage.getCraftingTools().isEmpty() && ItemStackUtils.compareItemStacks(storage.getCraftingTools(), matcher))
                 {
-                    if(InventoryUtils.getItemCountInProvider(building, item -> ItemStackUtils.compareItemStacksIgnoreStackSize(item, craftingHelperStack, false, true)) <= ingredient.getAmount())
+                    if(building.countMatches(item -> ItemStackUtils.compareItemStack(matcher, item)) <= ingredient.getAmount())
                     {
                         int requiredForDurability = (int) Math.ceil((double) count / ingredient.getRemainingDurablityValue());
                         materialRequests.add(createNewRequestForStack(manager, craftingHelperStack, requiredForDurability , requiredForDurability, false));
                     }
                 }
-                else if (!ItemStackUtils.isEmpty(container) && ItemStackUtils.compareItemStacksIgnoreStackSize(container, craftingHelperStack, false, true))
+                else if (!ItemStackUtils.isEmpty(container) && ItemStackUtils.compareItemStack(matcher, container))
                 {
                     materialRequests.add(createNewRequestForStack(manager, craftingHelperStack, ingredient.getAmount(), ingredient.getAmount(), false));
                 } 
@@ -245,7 +253,12 @@ public abstract class AbstractCraftingProductionResolver<C extends AbstractCraft
             manager.updateRequestState(request.getId(), RequestState.FAILED);
             return;
         }
-        final IRecipeStorage storage = module.getFirstFulfillableRecipe(stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, request.getRequest().getStack()), request.getRequest().getCount(), false);
+        final Matcher matcher = new Matcher.Builder(request.getRequest().getStack().getItem())
+            .compareDamage(request.getRequest().getStack().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, request.getRequest().getStack().getTag())
+            .build();
+        final IRecipeStorage storage = module.getFirstFulfillableRecipe(stack -> ItemStackUtils.compareItemStack(matcher, stack), request.getRequest().getCount(),
+                false);
 
         if (storage == null)
         {

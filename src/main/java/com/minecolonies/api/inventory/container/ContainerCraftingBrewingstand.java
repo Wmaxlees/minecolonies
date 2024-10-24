@@ -1,7 +1,7 @@
 package com.minecolonies.api.inventory.container;
 
 import com.minecolonies.api.inventory.ModContainers;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;

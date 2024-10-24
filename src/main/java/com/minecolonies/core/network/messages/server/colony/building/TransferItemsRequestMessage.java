@@ -4,10 +4,13 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.MessageUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.network.messages.server.AbstractBuildingServerMessage;
 import net.minecraft.ChatFormatting;
@@ -100,7 +103,7 @@ public class TransferItemsRequestMessage extends AbstractBuildingServerMessage<I
 
         final boolean isCreative = player.isCreative();
         // Inventory content before
-        Map<ItemStorage, ItemStorage> previousContent = null;
+        Map<ItemStack, Integer> previousContent = null;
         final int amountToTake;
         if (isCreative)
         {
@@ -110,11 +113,14 @@ public class TransferItemsRequestMessage extends AbstractBuildingServerMessage<I
         {
             if (MineColonies.getConfig().getServer().debugInventories.get())
             {
-                previousContent = InventoryUtils.getAllItemsForProviders(building.getTileEntity(), new InvWrapper(player.getInventory()));
+                previousContent = building.getAllItems();
             }
 
-            amountToTake = Math.min(quantity, InventoryUtils.getItemCountInItemHandler(new InvWrapper(player.getInventory()),
-              stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack, true, true)));
+            final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                .compareDamage(itemStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
+                .build();
+            amountToTake = Math.min(quantity, InventoryUtils.countInPlayersInventory(player, stack -> ItemStackUtils.compareItemStack(matcher, stack)));
         }
 
         ItemStack remainingItemStack = ItemStack.EMPTY;
@@ -126,7 +132,7 @@ public class TransferItemsRequestMessage extends AbstractBuildingServerMessage<I
             itemStackToTake.setCount(insertAmount);
             tempAmount -= insertAmount;
 
-            remainingItemStack = InventoryUtils.addItemStackToProviderWithResult(building.getTileEntity(), itemStackToTake);
+            remainingItemStack = building.insert(itemStackToTake, false);
             if (!remainingItemStack.isEmpty())
             {
                 tempAmount += remainingItemStack.getCount();
@@ -150,12 +156,13 @@ public class TransferItemsRequestMessage extends AbstractBuildingServerMessage<I
             if (!isCreative)
             {
                 int amountToRemoveFromPlayer = amountToTake - tempAmount;
+                final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                    .compareDamage(itemStack.getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
+                    .build();
                 while (amountToRemoveFromPlayer > 0)
                 {
-                    final int slot =
-                      InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()),
-                        stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack, true, true));
-                    final ItemStack itemsTaken = player.getInventory().removeItem(slot, amountToRemoveFromPlayer);
+                    final ItemStack itemsTaken = InventoryUtils.extractItemFromPlayerInventory(player, stack -> ItemStackUtils.compareItemStack(matcher, stack), amountToRemoveFromPlayer, ItemCountType.USE_COUNT_AS_MAXIMUM, false);
                     amountToRemoveFromPlayer -= ItemStackUtils.getSize(itemsTaken);
                 }
             }
@@ -168,7 +175,12 @@ public class TransferItemsRequestMessage extends AbstractBuildingServerMessage<I
 
         if (!isCreative && previousContent != null && MineColonies.getConfig().getServer().debugInventories.get())
         {
-            InventoryUtils.doStorageSetsMatch(previousContent, InventoryUtils.getAllItemsForProviders(building.getTileEntity(), new InvWrapper(player.getInventory())), true);
+            final Map<ItemStack, Integer> newContent = building.getAllItems();
+            for (final Map.Entry<ItemStack, Integer> entry : InventoryUtils.getAllItemsFromPlayer(player).entrySet())
+            {
+                newContent.put(entry.getKey(), newContent.getOrDefault(entry.getKey(), 0) + entry.getValue());
+            }
+            InventoryUtils.doItemSetsMatch(previousContent, newContent, true);
         }
     }
 }

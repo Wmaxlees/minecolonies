@@ -1,7 +1,9 @@
 package com.minecolonies.core.entity.ai.workers.guard;
 
 import com.minecolonies.api.items.ModItems;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.colony.jobs.JobDruid;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
@@ -35,7 +37,8 @@ public class EntityAIDruid extends AbstractEntityAIGuard<JobDruid, AbstractBuild
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.POTION))
+        final Matcher matcher = new Matcher.Builder(Items.POTION).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             renderMeta += RENDER_META_POTION;
         }
@@ -50,12 +53,11 @@ public class EntityAIDruid extends AbstractEntityAIGuard<JobDruid, AbstractBuild
         if (worker.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(DRUID_USE_POTIONS) > 0)
         {
             // Mistletoes and water bottles
-            InventoryUtils.transferXOfFirstSlotInProviderWithIntoNextFreeSlotInItemHandler(building,
-              item -> item.getItem() == ModItems.magicpotion,
-              32,
-              worker.getInventoryCitizen());
+            final Matcher matcher = new Matcher.Builder(ModItems.magicpotion)
+                .build();
+            InventoryUtils.transfer(building.getInventories(), worker.getInventory(), matcher, 32, ItemCountType.USE_COUNT_AS_MAXIMUM);
 
-            if (InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), item -> item.getItem() == ModItems.magicpotion) < 8)
+            if (worker.getInventory().countMatches(item -> item.getItem() == ModItems.magicpotion) < 8)
             {
                 checkIfRequestForItemExistOrCreateAsync(new ItemStack(ModItems.magicpotion), 16, 8);
             }

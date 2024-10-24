@@ -4,9 +4,13 @@ import com.google.common.collect.Lists;
 import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.requestsystem.factory.IFactoryController;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.ReflectionUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
@@ -271,7 +275,22 @@ public class Stack implements IConcreteDeliverable
     @Override
     public boolean matches(@NotNull final ItemStack stack)
     {
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getStack(), stack, matchDamage, matchNBT);
+        final Matcher.Builder matcherBuilder = new Matcher.Builder(getStack().getItem())
+            .compareCount(ItemCountType.USE_COUNT_AS_MINIMUM, getCount());
+        if (matchDamage)
+        {
+            matcherBuilder.compareDamage(getStack().getDamageValue());
+        }
+        if (matchNBT)
+        {
+            matcherBuilder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getStack().getTag());
+        }
+        final Matcher matcher = matcherBuilder.build();
+
+        Log.getLogger().info("Checking if we can resolve stack request for " + getCount() + " " + getStack().getDisplayName().getString() + " with stack: " + stack);
+        final boolean result = ItemStackUtils.compareItemStack(matcher, stack);
+        Log.getLogger().info("Match: " + result);
+        return result;
     }
 
     @Override
@@ -336,12 +355,10 @@ public class Stack implements IConcreteDeliverable
         {
             return true;
         }
-        if (!(o instanceof Stack))
+        if (!(o instanceof Stack stack1))
         {
             return false;
         }
-
-        final Stack stack1 = (Stack) o;
 
         if (matchDamage != stack1.matchDamage)
         {
@@ -356,11 +373,23 @@ public class Stack implements IConcreteDeliverable
             return false;
         }
 
-        if (!ItemStackUtils.compareItemStacksIgnoreStackSize(getStack(), stack1.getStack()))
+        final Matcher stackMatcher = new Matcher.Builder(getStack().getItem())
+            .compareDamage(getStack().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getStack().getTag())
+            .build();
+        if (!ItemStackUtils.compareItemStack(stackMatcher, stack1.getStack()))
         {
+            Log.getLogger().info("Stacks do not match: " + getStack().getDisplayName().getString() + " vs " + stack1.getStack().getDisplayName().getString());
             return false;
         }
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getResult(), stack1.getResult());
+
+        final Matcher resultMatcher = new Matcher.Builder(getResult().getItem())
+            .compareDamage(getResult().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getResult().getTag())
+            .build();
+        final boolean result = ItemStackUtils.compareItemStack(resultMatcher, stack1.getResult());
+        Log.getLogger().info("Results  match: " + result + " " + getResult().getDisplayName().getString() + " vs " + stack1.getResult().getDisplayName().getString());
+        return result;
     }
 
     @Override

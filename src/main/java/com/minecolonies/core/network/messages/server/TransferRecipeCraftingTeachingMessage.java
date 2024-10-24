@@ -4,7 +4,8 @@ import com.minecolonies.api.inventory.container.ContainerCrafting;
 import com.minecolonies.api.inventory.container.ContainerCraftingBrewingstand;
 import com.minecolonies.api.inventory.container.ContainerCraftingFurnace;
 import com.minecolonies.api.network.IMessage;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.FriendlyByteBuf;

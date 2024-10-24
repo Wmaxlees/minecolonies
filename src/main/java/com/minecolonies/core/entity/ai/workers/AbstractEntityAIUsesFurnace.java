@@ -9,11 +9,14 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.AIBlockingEventType;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.BuildingModules;
 import com.minecolonies.core.colony.buildings.modules.FurnaceUserModule;
@@ -28,14 +31,12 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.FurnaceBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
-import net.minecraftforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState.*;
-import static com.minecolonies.api.util.ItemStackUtils.*;
 import static com.minecolonies.api.util.constant.BuildingConstants.FUEL_LIST;
 import static com.minecolonies.api.util.constant.Constants.*;
 import static com.minecolonies.api.util.constant.TranslationConstants.BAKER_HAS_NO_FURNACES_MESSAGE;
@@ -95,9 +96,7 @@ public abstract class AbstractEntityAIUsesFurnace<J extends AbstractJob<?, J>, B
      */
     private void extractFuelFromFurnace(final FurnaceBlockEntity furnace)
     {
-        InventoryUtils.transferItemStackIntoNextFreeSlotInItemHandler(
-          new InvWrapper(furnace), FUEL_SLOT,
-          worker.getInventoryCitizen());
+        InventoryUtils.transfer(furnace, worker.getInventory(), FUEL_SLOT, 0, ItemCountType.IGNORE_COUNT);
     }
 
     /**
@@ -115,7 +114,7 @@ public abstract class AbstractEntityAIUsesFurnace<J extends AbstractJob<?, J>, B
      */
     protected boolean reachedMaxToKeep()
     {
-        final int count = InventoryUtils.countEmptySlotsInBuilding(building);
+        final int count = building.countMatches(stack -> stack.isEmpty());
         return count <= STORAGE_BUFFER;
     }
 
@@ -228,12 +227,16 @@ public abstract class AbstractEntityAIUsesFurnace<J extends AbstractJob<?, J>, B
             return RETRIEVING_END_PRODUCT_FROM_FURNACE;
         }
 
-        final int amountOfSmeltableInBuilding = InventoryUtils.getCountFromBuilding(building, this::isSmeltable);
-        final int amountOfSmeltableInInv = InventoryUtils.getItemCountInItemHandler((worker.getInventoryCitizen()), this::isSmeltable);
+        final int amountOfSmeltableInBuilding = building.countMatches(this::isSmeltable);
+        final int amountOfSmeltableInInv = worker.getInventory().countMatches(this::isSmeltable);
 
-        final int amountOfFuelInBuilding = InventoryUtils.getCountFromBuilding(building, itemListModule.getList());
-        final int amountOfFuelInInv =
-          InventoryUtils.getItemCountInItemHandler((worker.getInventoryCitizen()), stack -> itemListModule.isItemInList(new ItemStorage(stack)));
+        final List<Matcher> matchers = itemListModule.getList().stream()
+                .map(itemStorage -> new Matcher.Builder(itemStorage.getItem())
+                        .compareDamage(itemStorage.getItemStack().getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStorage.getItemStack().getTag()).build())
+                .toList();
+        final int amountOfFuelInBuilding = building.countMatches(matchers);
+        final int amountOfFuelInInv = worker.getInventory().countMatches(matchers);
 
         if (amountOfSmeltableInBuilding + amountOfSmeltableInInv <= 0 && !reachedMaxToKeep())
         {
@@ -328,9 +331,9 @@ public abstract class AbstractEntityAIUsesFurnace<J extends AbstractJob<?, J>, B
             if (entity instanceof FurnaceBlockEntity)
             {
                 final FurnaceBlockEntity furnace = (FurnaceBlockEntity) entity;
-                if ((amountOfFuel > 0 && hasSmeltableInFurnaceAndNoFuel(furnace))
-                      || (amountOfSmeltable > 0 && hasFuelInFurnaceAndNoSmeltable(furnace))
-                      || (amountOfFuel > 0 && amountOfSmeltable > 0 && hasNeitherFuelNorSmeltAble(furnace)))
+                if ((amountOfFuel > 0 && ItemStackUtils.hasSmeltableInFurnaceAndNoFuel(furnace))
+                      || (amountOfSmeltable > 0 && ItemStackUtils.hasFuelInFurnaceAndNoSmeltable(furnace))
+                      || (amountOfFuel > 0 && amountOfSmeltable > 0 && ItemStackUtils.hasNeitherFuelNorSmeltAble(furnace)))
                 {
                     walkTo = pos;
                     return START_USING_FURNACE;
@@ -478,21 +481,17 @@ public abstract class AbstractEntityAIUsesFurnace<J extends AbstractJob<?, J>, B
         {
             final FurnaceBlockEntity furnace = (FurnaceBlockEntity) entity;
 
-            if (InventoryUtils.hasItemInItemHandler((worker.getInventoryCitizen()), this::isSmeltable)
-                  && (hasFuelInFurnaceAndNoSmeltable(furnace) || hasNeitherFuelNorSmeltAble(furnace)))
+            if (worker.getInventory().hasMatch(this::isSmeltable)
+                  && (ItemStackUtils.hasFuelInFurnaceAndNoSmeltable(furnace) || ItemStackUtils.hasNeitherFuelNorSmeltAble(furnace)))
             {
-                InventoryUtils.transferXOfFirstSlotInItemHandlerWithIntoInItemHandler(
-                  (worker.getInventoryCitizen()), this::isSmeltable, STACKSIZE,
-                  new InvWrapper(furnace), SMELTABLE_SLOT);
+                InventoryUtils.transfer(worker.getInventory(), furnace, SMELTABLE_SLOT, this::isSmeltable, STACKSIZE, ItemCountType.USE_COUNT_AS_MAXIMUM);
             }
 
             final ItemListModule module = building.getModuleMatching(ItemListModule.class, m -> m.getId().equals(FUEL_LIST));
-            if (InventoryUtils.hasItemInItemHandler((worker.getInventoryCitizen()), stack -> module.isItemInList(new ItemStorage(stack)))
-                  && (hasSmeltableInFurnaceAndNoFuel(furnace) || hasNeitherFuelNorSmeltAble(furnace)))
+            if (worker.getInventory().hasMatch(stack -> module.isItemInList(new ItemStorage(stack)))
+                  && (ItemStackUtils.hasSmeltableInFurnaceAndNoFuel(furnace) || ItemStackUtils.hasNeitherFuelNorSmeltAble(furnace)))
             {
-                InventoryUtils.transferXOfFirstSlotInItemHandlerWithIntoInItemHandler(
-                  (worker.getInventoryCitizen()), stack -> module.isItemInList(new ItemStorage(stack)), STACKSIZE,
-                  new InvWrapper(furnace), FUEL_SLOT);
+                InventoryUtils.transfer(worker.getInventory(), furnace, FUEL_SLOT, stack -> module.isItemInList(new ItemStorage(stack)), STACKSIZE, ItemCountType.USE_COUNT_AS_MAXIMUM);
             }
         }
         walkTo = null;

@@ -6,8 +6,9 @@ import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.util.BlockPosUtil;
 import com.minecolonies.api.util.DamageSourceKeys;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingCombatAcademy;
 import com.minecolonies.core.colony.jobs.JobCombatTraining;
 import com.minecolonies.core.util.WorkerUtil;
@@ -181,11 +182,12 @@ public class EntityAICombatTraining extends AbstractEntityAITraining<JobCombatTr
 
             if (worker.getRandom().nextBoolean())
             {
-                final int shieldSlot = InventoryUtils.findFirstSlotInItemHandlerWith(getInventory(), Items.SHIELD);
-                if (shieldSlot != -1)
+                final Matcher matcher = new Matcher.Builder(Items.SHIELD).build();
+                final boolean hasShield = getInventory().hasMatch(matcher);
+                if (hasShield)
                 {
                     worker.playSound(SoundEvents.SHIELD_BLOCK, (float) BASIC_VOLUME, (float) SoundUtils.getRandomPitch(worker.getRandom()));
-                    worker.getCitizenItemHandler().setHeldItem(InteractionHand.OFF_HAND, shieldSlot);
+                    worker.getInventory().setHeldItem(InteractionHand.OFF_HAND, Items.SHIELD);
                     worker.startUsingItem(InteractionHand.OFF_HAND);
                     worker.getLookControl().setLookAt(trainingPartner, (float) TURN_AROUND, (float) TURN_AROUND);
                 }
@@ -273,12 +275,12 @@ public class EntityAICombatTraining extends AbstractEntityAITraining<JobCombatTr
 
             if (worker.getRandom().nextBoolean())
             {
-                final int shieldSlot = InventoryUtils.findFirstSlotInItemHandlerWith(getInventory(),
-                  Items.SHIELD);
-                if (shieldSlot != -1)
+                final Matcher matcher = new Matcher.Builder(Items.SHIELD).build();
+                final boolean hasShield = getInventory().hasMatch(matcher);
+                if (hasShield)
                 {
                     worker.playSound(SoundEvents.SHIELD_BLOCK, (float) BASIC_VOLUME, (float) SoundUtils.getRandomPitch(worker.getRandom()));
-                    worker.getCitizenItemHandler().setHeldItem(InteractionHand.OFF_HAND, shieldSlot);
+                    worker.getInventory().setHeldItem(InteractionHand.OFF_HAND, Items.SHIELD);
                     worker.startUsingItem(InteractionHand.OFF_HAND);
                 }
             }
@@ -313,11 +315,7 @@ public class EntityAICombatTraining extends AbstractEntityAITraining<JobCombatTr
             return false;
         }
 
-        final int weaponSlot = InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), ModEquipmentTypes.sword.get(), 0, building.getMaxEquipmentLevel());
-        if (weaponSlot != -1)
-        {
-            worker.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, weaponSlot);
-        }
+        worker.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.sword.get(), 0, building.getMaxEquipmentLevel());
         return true;
     }
 

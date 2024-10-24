@@ -2,8 +2,8 @@ package com.minecolonies.core.network.messages.server;
 
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.network.IMessage;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.colony.Colony;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -75,7 +75,7 @@ public class PickupBlockMessage implements IMessage
         final ItemStack stack = new ItemStack(world.getBlockState(pos).getBlock(), 1);
         final CompoundTag compoundNBT = new CompoundTag();
         stack.setTag(compoundNBT);
-        if (InventoryUtils.addItemStackToProvider(sender, stack))
+        if (InventoryUtils.insertInPlayerInventory(sender, stack))
         {
             world.destroyBlock(pos, false);
         }

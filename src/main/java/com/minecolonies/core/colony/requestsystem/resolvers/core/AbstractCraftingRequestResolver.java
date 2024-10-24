@@ -18,7 +18,9 @@ import com.minecolonies.api.crafting.IRecipeStorage;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.research.effects.AbstractResearchEffect;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.WorkerBuildingModule;
 import com.minecolonies.core.colony.requestsystem.requesters.IBuildingBasedRequester;
@@ -312,7 +314,10 @@ public abstract class AbstractCraftingRequestResolver extends AbstractRequestRes
             int stacksNeeded = (int) Math.ceil((double)(requestStack.getCount() * batchSize) / requestStack.getMaxStackSize());
             for(ItemStorage ingredient : inputs)
             {
-                if(ItemStackUtils.compareItemStackListIgnoreStackSize(secondaryStacks, ingredient.getItemStack(), false, true))
+                final Matcher matcher = new Matcher.Builder(ingredient.getItem())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, ingredient.getItemStack().getTag())
+                    .build();
+                if(ItemStackUtils.compareItemStacks(secondaryStacks, matcher))
                 {
                     stacksNeeded += 1;
                 }

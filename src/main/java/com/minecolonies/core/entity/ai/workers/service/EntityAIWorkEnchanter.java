@@ -11,6 +11,9 @@ import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.Skill;
 import com.minecolonies.api.items.ModItems;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.EnchanterStationsModule;
@@ -148,11 +151,10 @@ public class EntityAIWorkEnchanter extends AbstractEntityAICrafting<JobEnchanter
                 return IDLE;
             }
 
-            final int booksInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), IS_BOOK);
+            final int booksInInv = worker.getInventory().countMatches(IS_BOOK);
             if (booksInInv <= 0)
             {
-                final int numberOfBooksInBuilding = InventoryUtils.hasBuildingEnoughElseCount(building, IS_BOOK, 1);
-                if (numberOfBooksInBuilding > 0)
+                if (building.hasMatch(IS_BOOK))
                 {
                     needsCurrently = new Tuple<>(IS_BOOK, 1);
                     return GATHERING_REQUIRED_MATERIALS;
@@ -183,11 +185,10 @@ public class EntityAIWorkEnchanter extends AbstractEntityAICrafting<JobEnchanter
 
         if (!ancientTomeCraftingDisabled)
         {
-            final int ancientTomesInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), IS_ANCIENT_TOME);
+            final int ancientTomesInInv = worker.getInventory().countMatches(IS_ANCIENT_TOME);
             if (ancientTomesInInv <= 0)
             {
-                final int amountOfAncientTomes = InventoryUtils.hasBuildingEnoughElseCount(building, IS_ANCIENT_TOME, 1);
-                if (amountOfAncientTomes > 0)
+                if (building.hasMatch(IS_ANCIENT_TOME))
                 {
                     needsCurrently = new Tuple<>(IS_ANCIENT_TOME, 1);
                     return GATHERING_REQUIRED_MATERIALS;
@@ -257,7 +258,7 @@ public class EntityAIWorkEnchanter extends AbstractEntityAICrafting<JobEnchanter
         final ICitizenData data = worker.getCitizenData();
         if (data != null)
         {
-            final List<ItemStack> loot = currentRecipeStorage.fullfillRecipeAndCopy(getLootContext(), building.getHandlers(), true);
+            final List<ItemStack> loot = currentRecipeStorage.fullfillRecipeAndCopy(getLootContext(), building.getInventories(), true);
             if (loot != null)
             {
                 final int enchantmentLevel = loot.stream()
@@ -394,8 +395,8 @@ public class EntityAIWorkEnchanter extends AbstractEntityAICrafting<JobEnchanter
             return getState();
         }
 
-        final int bookSlot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), Items.BOOK);
-        if (bookSlot != -1)
+        final Matcher bookMatcher = new Matcher.Builder(Items.BOOK).build();
+        if (worker.getInventory().hasMatch(bookMatcher))
         {
             final int size = citizenToGatherFrom.getInventory().getSlots();
             final int attempts = (int) (getSecondarySkillLevel() / 5.0);
@@ -411,7 +412,7 @@ public class EntityAIWorkEnchanter extends AbstractEntityAICrafting<JobEnchanter
                 }
             }
 
-            worker.getInventoryCitizen().extractItem(bookSlot, 1, false);
+            worker.getInventory().extractStack(bookMatcher, 0, ItemCountType.IGNORE_COUNT, false);
             worker.getCitizenData().getCitizenSkillHandler().incrementLevel(Skill.Mana, 1);
             worker.getCitizenExperienceHandler().addExperience(XP_PER_DRAIN);
             worker.getCitizenData().markDirty(80);

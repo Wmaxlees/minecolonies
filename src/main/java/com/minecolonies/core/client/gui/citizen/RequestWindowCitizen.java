@@ -7,10 +7,12 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.MessageUtils.MessagePriority;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemHandlerUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.server.colony.UpdateRequestStateMessage;
 import com.minecolonies.core.network.messages.server.colony.citizen.TransferItemsToCitizenRequestMessage;
@@ -119,7 +121,7 @@ public class RequestWindowCitizen extends AbstractWindowCitizen
         final Predicate<ItemStack> requestPredicate = stack -> request.getRequest().matches(stack);
         final int amount = request.getRequest().getCount();
 
-        final int count = InventoryUtils.getItemCountInItemHandler(new InvWrapper(inventory), requestPredicate);
+        final int count = InventoryUtils.countInPlayersInventory(mc.player, requestPredicate);
 
         if (!isCreative && count <= 0)
         {
@@ -135,30 +137,18 @@ public class RequestWindowCitizen extends AbstractWindowCitizen
         }
         else
         {
-            final List<Integer> slots = InventoryUtils.findAllSlotsInItemHandlerWith(new InvWrapper(inventory), requestPredicate);
-            final int invSize = inventory.getContainerSize() - 5; // 4 armour slots + 1 shield slot
-            int slot = -1;
-            for (final Integer possibleSlot : slots)
-            {
-                if (possibleSlot < invSize)
-                {
-                    slot = possibleSlot;
-                    break;
-                }
-            }
-
-            if (slot == -1)
+            itemStack = InventoryUtils.extractItemFromPlayerInventory(mc.player, requestPredicate, amount, ItemCountType.USE_COUNT_AS_MAXIMUM, true);
+            
+            if (itemStack.isEmpty())
             {
                 MessageUtils.format("<%s> ")
                   .append(COM_MINECOLONIES_CANT_TAKE_EQUIPPED, citizen.getName())
                   .withPriority(MessagePriority.IMPORTANT)
-                  .sendTo(Minecraft.getInstance().player);
+                  .sendTo(mc.player);
 
                 return; // We don't have one that isn't in our armour slot
             }
-            itemStack = inventory.getItem(slot);
         }
-
 
         if (citizen.getWorkBuilding() != null)
         {

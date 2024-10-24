@@ -1,7 +1,7 @@
 package com.minecolonies.api.crafting;
 
 import com.google.common.collect.ImmutableList;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 

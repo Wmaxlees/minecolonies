@@ -5,8 +5,9 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.items.ModItems;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingCowboy;
 import com.minecolonies.core.colony.jobs.JobCowboy;
 import net.minecraft.resources.ResourceLocation;
@@ -70,11 +71,14 @@ public class EntityAIWorkCowboy extends AbstractEntityAIHerder<JobCowboy, Buildi
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.BUCKET) || worker.getCitizenInventoryHandler().hasItemInInventory(ModItems.large_empty_bottle))
+        final Matcher bucketMatcher = new Matcher.Builder(Items.BUCKET).build();
+        final Matcher largeEmptyBottleMatcher = new Matcher.Builder(ModItems.large_empty_bottle).build();
+        final Matcher bowlMatcher = new Matcher.Builder(Items.BOWL).build();
+        if (worker.getInventory().hasMatch(bucketMatcher) || worker.getInventory().hasMatch(largeEmptyBottleMatcher))
         {
             renderMeta += RENDER_META_BUCKET;
         }
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.BOWL))
+        if (worker.getInventory().hasMatch(bowlMatcher))
         {
             renderMeta += RENDER_META_BOWL;
         }
@@ -142,10 +146,11 @@ public class EntityAIWorkCowboy extends AbstractEntityAIHerder<JobCowboy, Buildi
     {
         worker.getCitizenData().setVisibleStatus(HERD_COW);
 
-        if (!worker.getCitizenInventoryHandler().hasItemInInventory(building.getMilkInputItem().getItem()))
+        final Matcher outputMatcher = new Matcher.Builder(building.getMilkOutputItem().getItem()).build();
+        if (!worker.getInventory().hasMatch(outputMatcher))
         {
-            if (InventoryUtils.hasBuildingEnoughElseCount(building, new ItemStorage(building.getMilkInputItem()), 1) > 0
-                  && !walkToBuilding())
+            final Matcher inputMatcher = new Matcher.Builder(building.getMilkInputItem().getItem()).build();
+            if (building.hasMatch(inputMatcher) && !walkToBuilding())
             {
                 checkAndTransferFromHut(building.getMilkInputItem());
             }
@@ -167,12 +172,13 @@ public class EntityAIWorkCowboy extends AbstractEntityAIHerder<JobCowboy, Buildi
 
         if (equipItem(InteractionHand.MAIN_HAND, Collections.singletonList(building.getMilkInputItem())) && !walkingToAnimal(cow))
         {
-            if (InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), building.getMilkOutputItem()))
+            if (worker.getInventory().insert(building.getMilkOutputItem(), false).isEmpty())
             {
                 building.getFirstModuleOccurance(BuildingCowboy.HerdingModule.class).onMilked();
-                worker.getCitizenItemHandler().removeHeldItem();
+                worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
                 equipItem(InteractionHand.MAIN_HAND, Collections.singletonList(building.getMilkOutputItem()));
-                InventoryUtils.tryRemoveStackFromItemHandler(worker.getInventoryCitizen(), building.getMilkInputItem());
+                final Matcher matcher = new Matcher.Builder(building.getMilkInputItem().getItem()).build();
+                worker.getInventory().extractStack(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
             }
 
             incrementActionsDoneAndDecSaturation();
@@ -192,10 +198,10 @@ public class EntityAIWorkCowboy extends AbstractEntityAIHerder<JobCowboy, Buildi
     {
         worker.getCitizenData().setVisibleStatus(HERD_COW);
 
-        if (!worker.getCitizenInventoryHandler().hasItemInInventory(Items.BOWL))
+        final Matcher bowlMatcher = new Matcher.Builder(Items.BOWL).build();
+        if (!worker.getInventory().hasMatch(bowlMatcher))
         {
-            if (InventoryUtils.hasBuildingEnoughElseCount(building, new ItemStorage(new ItemStack(Items.BOWL, 1)), 1) > 0
-                  && !walkToBuilding())
+            if (building.hasMatch(bowlMatcher) && !walkToBuilding())
             {
                 checkAndTransferFromHut(new ItemStack(Items.BOWL, 1));
             }
@@ -221,12 +227,12 @@ public class EntityAIWorkCowboy extends AbstractEntityAIHerder<JobCowboy, Buildi
             fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(Items.BOWL));
             if (mooshroom.mobInteract(fakePlayer, InteractionHand.MAIN_HAND).equals(InteractionResult.CONSUME))
             {
-                if (InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), fakePlayer.getMainHandItem()))
+                if (worker.getInventory().insert(fakePlayer.getMainHandItem(), false).isEmpty())
                 {
                     building.getFirstModuleOccurance(BuildingCowboy.HerdingModule.class).onStewed();
-                    worker.getCitizenItemHandler().removeHeldItem();
+                    worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
                     equipItem(InteractionHand.MAIN_HAND, Collections.singletonList(fakePlayer.getMainHandItem()));
-                    InventoryUtils.tryRemoveStackFromItemHandler(worker.getInventoryCitizen(), new ItemStack(Items.BOWL));
+                    worker.getInventory().extractStack(bowlMatcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
                 }
                 fakePlayer.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
             }

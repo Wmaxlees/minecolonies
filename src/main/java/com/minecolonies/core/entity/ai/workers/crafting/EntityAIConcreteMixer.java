@@ -2,9 +2,10 @@ package com.minecolonies.core.entity.ai.workers.crafting;
 
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingConcreteMixer;
 import com.minecolonies.core.colony.jobs.JobConcreteMixer;
 import net.minecraft.world.level.block.Block;
@@ -13,7 +14,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.function.Predicate;
@@ -104,14 +104,17 @@ public class EntityAIConcreteMixer extends AbstractEntityAICrafting<JobConcreteM
      */
     private IAIState mixConcrete()
     {
-        int slot = -1;
-
+        final Predicate<ItemStack> concretePredicate;
         if (currentRequest != null && currentRecipeStorage != null)
         {
             ItemStack inputStack = currentRecipeStorage.getCleanedInput().get(0).getItemStack();
+            final Matcher matcher = new Matcher.Builder(inputStack.getItem())
+              .compareDamage(inputStack.getDamageValue())
+              .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, inputStack.getTag())
+              .build();
             if (CONCRETE.test(inputStack))
             {
-                slot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), s -> ItemStackUtils.compareItemStacksIgnoreStackSize(s, inputStack));
+                concretePredicate = s -> ItemStackUtils.compareItemStack(matcher, s);
             }
             else
             {
@@ -120,14 +123,18 @@ public class EntityAIConcreteMixer extends AbstractEntityAICrafting<JobConcreteM
         }
         else
         {
-            slot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), CONCRETE);
+            concretePredicate = CONCRETE;
         }
 
-        if (slot != -1)
+        if (worker.getInventory().hasMatch(concretePredicate))
         {
-            final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(slot);
+            final ItemStack stack = worker.getInventory().findFirstMatch(concretePredicate);
             final Block block = ((BlockItem) stack.getItem()).getBlock();
             final BlockPos posToPlace = building.getBlockToPlace();
+            final Matcher matcher = new Matcher.Builder(stack.getItem())
+              .compareDamage(stack.getDamageValue())
+              .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+              .build();
             if (posToPlace != null)
             {
                 if (walkToBlock(posToPlace))
@@ -136,7 +143,7 @@ public class EntityAIConcreteMixer extends AbstractEntityAICrafting<JobConcreteM
                     return START_WORKING;
                 }
                 walkTo = null;
-                if (InventoryUtils.attemptReduceStackInItemHandler(worker.getInventoryCitizen(), stack, 1))
+                if (worker.getInventory().reduceStackSize(matcher, 1))
                 {
                     world.setBlock(posToPlace, block.defaultBlockState().updateShape(Direction.DOWN, block.defaultBlockState(), world, posToPlace, posToPlace), 0x03);
                 }
@@ -161,7 +168,7 @@ public class EntityAIConcreteMixer extends AbstractEntityAICrafting<JobConcreteM
             return START_WORKING;
         }
 
-        if (InventoryUtils.hasItemInItemHandler(building.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null), CONCRETE))
+        if (building.hasMatch(CONCRETE))
         {
             needsCurrently = new Tuple<>(CONCRETE, STACKSIZE);
             return GATHERING_REQUIRED_MATERIALS;

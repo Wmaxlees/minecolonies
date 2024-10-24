@@ -10,9 +10,12 @@ import com.minecolonies.api.colony.requestsystem.requestable.MinimumStack;
 import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.nbt.CompoundTag;
@@ -79,10 +82,16 @@ public class MinimumStockModule extends AbstractBuildingModule implements IMinim
      */
     private IToken<?> getMatchingRequest(final ItemStack stack, final Collection<IToken<?>> list)
     {
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+            .build();
+
         for (final IToken<?> token : list)
         {
             final IRequest<?> iRequest = building.getColony().getRequestManager().getRequestForToken(token);
-            if (iRequest != null && iRequest.getRequest() instanceof Stack && ItemStackUtils.compareItemStacksIgnoreStackSize(((Stack) iRequest.getRequest()).getStack(), stack))
+            if (iRequest != null && iRequest.getRequest() instanceof Stack && ItemStackUtils.compareItemStack(
+                    matcher, ((Stack) iRequest.getRequest()).getStack()))
             {
                 return token;
             }
@@ -122,8 +131,13 @@ public class MinimumStockModule extends AbstractBuildingModule implements IMinim
                 }
 
                 final int target = entry.getValue() * itemStack.getMaxStackSize();
-                final int count = InventoryUtils.hasBuildingEnoughElseCount(this.building, new ItemStorage(itemStack, true), target);
-                final int delta = target - count;
+
+                final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                    .compareDamage(itemStack.getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
+                    .build();
+                final int count = building.countMatches(matcher);
+                final int delta = target - Math.min(count, target);
                 final IToken<?> request = getMatchingRequest(itemStack, list);
                 if (delta > (building.getColony().getResearchManager().getResearchEffects().getEffectStrength(MIN_ORDER) > 0 ? target / 4 : 0))
                 {
@@ -146,10 +160,15 @@ public class MinimumStockModule extends AbstractBuildingModule implements IMinim
     @Override
     public boolean isMinimumStockRequest(final IRequest<? extends IDeliverable> request)
     {
+        final ItemStack stack = ((Stack) request.getRequest()).getStack();
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+            .build();
         for (final Map.Entry<ItemStorage, Integer> entry : minimumStock.entrySet())
         {
             if (request.getRequest() instanceof com.minecolonies.api.colony.requestsystem.requestable.Stack
-                  && ItemStackUtils.compareItemStacksIgnoreStackSize(((Stack) request.getRequest()).getStack(), entry.getKey().getItemStack()))
+                  && ItemStackUtils.compareItemStack(matcher, entry.getKey().getItemStack()))
             {
                 return true;
             }
@@ -170,7 +189,10 @@ public class MinimumStockModule extends AbstractBuildingModule implements IMinim
         {
             for(ItemStorage item:minimumStock.keySet())
             {
-                consumer.accept(stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, item.getItemStack(), false, true), minimumStock.get(item).intValue() * item.getItemStack().getMaxStackSize(), false);
+                final Matcher matcher = new Matcher.Builder(item.getItem())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, item.getItemStack().getTag())
+                    .build();
+                consumer.accept(stack -> ItemStackUtils.compareItemStack(matcher, stack), minimumStock.get(item).intValue() * item.getItemStack().getMaxStackSize(), false);
             }
         }
     }

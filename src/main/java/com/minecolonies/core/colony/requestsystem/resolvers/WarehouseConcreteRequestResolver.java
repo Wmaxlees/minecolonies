@@ -8,7 +8,9 @@ import com.minecolonies.api.colony.requestsystem.requestable.INonExhaustiveDeliv
 import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingWareHouse;
 import com.minecolonies.core.colony.requestsystem.resolvers.core.AbstractWarehouseRequestResolver;
 import net.minecraft.world.item.ItemStack;
@@ -45,15 +47,17 @@ public class WarehouseConcreteRequestResolver extends AbstractWarehouseRequestRe
         int totalCount = 0;
         for (final ItemStack possible : ((IConcreteDeliverable) deliverable).getRequestedItems())
         {
+            final Matcher matcher = new Matcher.Builder(possible.getItem())
+                .compareDamage(possible.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, possible.getTag())
+                .build();
             if (requestToCheck.getRequest() instanceof INonExhaustiveDeliverable neDeliverable)
             {
-                totalCount += Math.max(0, InventoryUtils.hasBuildingEnoughElseCount(wareHouse,
-                  new ItemStorage(possible, requestToCheck.getRequest().getMinimumCount(), ignoreDamage, ignoreNBT), requestToCheck.getRequest().getCount() + neDeliverable.getLeftOver()) - neDeliverable.getLeftOver());
+                totalCount += Math.max(0, wareHouse.countMatches(matcher) - neDeliverable.getLeftOver());
             }
             else
             {
-                totalCount += InventoryUtils.hasBuildingEnoughElseCount(wareHouse,
-                  new ItemStorage(possible, requestToCheck.getRequest().getMinimumCount(), ignoreDamage, ignoreNBT), requestToCheck.getRequest().getCount());
+                totalCount += wareHouse.countMatches(matcher);
             }
 
             if (totalCount >= requestToCheck.getRequest().getCount())

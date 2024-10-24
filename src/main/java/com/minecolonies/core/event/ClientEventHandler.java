@@ -12,10 +12,10 @@ import com.minecolonies.api.colony.buildings.modules.IBuildingModule;
 import com.minecolonies.api.colony.buildings.modules.ICraftingBuildingModule;
 import com.minecolonies.api.colony.buildings.registry.BuildingEntry;
 import com.minecolonies.api.research.IGlobalResearch;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.ColonyConstants;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.client.gui.WindowBuildingBrowser;
 import com.minecolonies.core.client.render.worldevent.ColonyBorderRenderer;
 import com.minecolonies.core.client.render.worldevent.WorldEventContext;
@@ -140,7 +140,7 @@ public class ClientEventHandler
                 handleHutBlockResearchUnlocks(colony, event.getToolTip(), blockItem.getBlock());
             }
 
-            if (event.getEntity().isCreative() && InventoryUtils.hasItemInItemHandler(new InvWrapper(event.getEntity().getInventory()), ModItems.scanTool.get()))
+            if (event.getEntity().isCreative() && InventoryUtils.doesPlayerHave(event.getEntity(), ModItems.scanTool.get()))
             {
                 int tier = SchemAnalyzerUtil.getBlockTier(blockItem.getBlock());
 

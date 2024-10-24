@@ -8,9 +8,10 @@ import com.minecolonies.api.items.ModItems;
 import com.minecolonies.api.tileentities.AbstractTileEntityBarrel;
 import com.minecolonies.api.tileentities.ITickable;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.core.Direction;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;

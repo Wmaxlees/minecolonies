@@ -7,8 +7,8 @@ import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.permissions.Action;
 import com.minecolonies.api.tileentities.AbstractTileEntityGrave;
 import com.minecolonies.core.tileentities.TileEntityGrave;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.SoundType;
@@ -148,10 +148,9 @@ public class BlockMinecoloniesGrave extends AbstractBlockMinecoloniesGrave<Block
     public void spawnAfterBreak(final BlockState state, final ServerLevel worldIn, final BlockPos pos, final ItemStack stack, final boolean p_222953_)
     {
         final BlockEntity tileentity = worldIn.getBlockEntity(pos);
-        if (tileentity instanceof TileEntityGrave)
+        if (tileentity instanceof TileEntityGrave grave)
         {
-            final IItemHandler handler = ((AbstractTileEntityGrave) tileentity).getInventory();
-            InventoryUtils.dropItemHandler(handler, worldIn, pos.getX(), pos.getY(), pos.getZ());
+            grave.dropAllItems(worldIn, pos);
         }
         super.spawnAfterBreak(state, worldIn, pos, stack, p_222953_);
     }
@@ -215,14 +214,9 @@ public class BlockMinecoloniesGrave extends AbstractBlockMinecoloniesGrave<Block
         if (state.getBlock() != newState.getBlock())
         {
             BlockEntity tileEntity = worldIn.getBlockEntity(pos);
-            if (tileEntity instanceof TileEntityGrave)
+            if (tileEntity instanceof TileEntityGrave grave)
             {
-                TileEntityGrave tileEntityGrave = (TileEntityGrave) tileEntity;
-                InventoryUtils.dropItemHandler(tileEntityGrave.getInventory(),
-                  worldIn,
-                  tileEntityGrave.getBlockPos().getX(),
-                  tileEntityGrave.getBlockPos().getY(),
-                  tileEntityGrave.getBlockPos().getZ());
+                grave.dropAllItems(worldIn, grave.getBlockPos());
                 worldIn.updateNeighbourForOutputSignal(pos, this);
             }
 

@@ -6,10 +6,10 @@ import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.items.ModItems;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingFlorist;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
 import com.minecolonies.core.colony.jobs.JobFlorist;
@@ -27,7 +27,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import static com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState.*;
-import static com.minecolonies.api.util.ItemStackUtils.IS_COMPOST;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.IS_COMPOST;
 import static com.minecolonies.api.util.constant.Constants.STACKSIZE;
 import static com.minecolonies.api.util.constant.Constants.TICKS_SECOND;
 import static com.minecolonies.api.util.constant.TranslationConstants.*;
@@ -133,7 +133,7 @@ public class EntityAIWorkFlorist extends AbstractEntityAIInteract<JobFlorist, Bu
     protected void updateRenderMetaData()
     {
         worker.setRenderMetadata(
-          (InventoryUtils.hasItemInItemHandler(worker.getItemHandlerCitizen(), stack -> stack.is(ItemTags.FLOWERS)) ? RENDER_META_FLOWERS : "")
+          (worker.getInventory().hasMatch(stack -> stack.is(ItemTags.FLOWERS)) ? RENDER_META_FLOWERS : "")
             + (getState() == IDLE ? "" : RENDER_META_WORKING));
     }
 
@@ -158,10 +158,10 @@ public class EntityAIWorkFlorist extends AbstractEntityAIInteract<JobFlorist, Bu
             return DECIDE;
         }
 
-        final int amountOfCompostInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), IS_COMPOST);
+        final int amountOfCompostInInv = worker.getInventory().countMatches(IS_COMPOST);
         if (amountOfCompostInInv <= 0)
         {
-            final int amountOfCompostInBuilding = InventoryUtils.hasBuildingEnoughElseCount(building, IS_COMPOST, 1);
+            final int amountOfCompostInBuilding = worker.getInventory().countMatches(IS_COMPOST);
             if (amountOfCompostInBuilding > 0)
             {
                 needsCurrently = new Tuple<>(IS_COMPOST, STACKSIZE);
@@ -220,7 +220,7 @@ public class EntityAIWorkFlorist extends AbstractEntityAIInteract<JobFlorist, Bu
             @Nullable final ItemStack stack = building.getFlowerToGrow();
             if (stack != null)
             {
-                if (worker.getRandom().nextInt(200 - getPrimarySkillLevel()) < 0 || InventoryUtils.shrinkItemCountInItemHandler(worker.getInventoryCitizen(), IS_COMPOST))
+                if (worker.getRandom().nextInt(200 - getPrimarySkillLevel()) < 0 || worker.getInventory().reduceStackSize(IS_COMPOST, 1))
                 {
                     ((TileEntityCompostedDirt) entity).compost(PERCENT_CHANGE_FOR_GROWTH - (building.getBuildingLevel() * 0.01), building.getFlowerToGrow());
                 }

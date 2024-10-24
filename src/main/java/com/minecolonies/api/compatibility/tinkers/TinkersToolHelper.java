@@ -1,7 +1,8 @@
 package com.minecolonies.api.compatibility.tinkers;
 
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

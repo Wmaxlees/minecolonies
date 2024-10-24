@@ -1,5 +1,6 @@
 package com.minecolonies.core.entity.ai.workers.production.herders;
 
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingSwineHerder;
 import com.minecolonies.core.colony.jobs.JobSwineHerder;
 import net.minecraft.world.item.Items;
@@ -26,7 +27,8 @@ public class EntityAIWorkSwineHerder extends AbstractEntityAIHerder<JobSwineHerd
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.CARROT))
+        final Matcher matcher = new Matcher.Builder(Items.CARROT).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             renderMeta += EntityAIWorkRabbitHerder.RENDER_META_CARROT;
         }

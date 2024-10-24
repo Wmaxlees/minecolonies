@@ -6,9 +6,9 @@ import com.ldtteam.blockui.controls.ButtonImage;
 import com.ldtteam.blockui.controls.ItemIcon;
 import com.ldtteam.blockui.controls.Text;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.client.gui.AbstractModuleWindow;
 import com.minecolonies.core.colony.buildings.moduleviews.WarehouseOptionsModuleView;
@@ -101,7 +101,7 @@ public class WarehouseOptionsModuleWindow extends AbstractModuleWindow
         }
         else
         {
-            amountToSet = InventoryUtils.getItemCountInItemHandler(new InvWrapper(inventory), resource.getItem());
+            amountToSet = InventoryUtils.countInPlayersInventory(mc.player, resource.getItem());
         }
         resource.setPlayerAmount(amountToSet);
 

@@ -4,7 +4,6 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingShepherd;
 import com.minecolonies.core.colony.jobs.JobShepherd;
@@ -157,7 +156,7 @@ public class EntityAIWorkShepherd extends AbstractEntityAIHerder<JobShepherd, Bu
             for (final ItemStack item : items)
             {
                 building.getModule(STATS_MODULE).incrementBy(ITEM_OBTAINED + ";" + item.getItem().getDescriptionId(), item.getCount());
-                InventoryUtils.transferItemStackIntoNextBestSlotInItemHandler(item, (worker.getInventoryCitizen()));
+                worker.getInventory().insert(item, false);
             }
         }
 

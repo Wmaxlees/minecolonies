@@ -4,7 +4,7 @@ import com.minecolonies.api.blocks.AbstractBlockMinecoloniesRack;
 import com.minecolonies.api.blocks.types.RackType;
 import com.minecolonies.api.inventory.ModContainers;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -74,23 +74,26 @@ public class ContainerRack extends AbstractContainerMenu
         super(ModContainers.rackInv.get(), windowId);
 
         final AbstractTileEntityRack abstractTileEntityRack = (AbstractTileEntityRack) inv.player.level().getBlockEntity(rack);
-        // TODO: bug, what if neighbor is actually bp.ZERO? (unlikely to happen)
-        final AbstractTileEntityRack neighborRack = neighbor.equals(BlockPos.ZERO) ? null : (AbstractTileEntityRack) inv.player.level().getBlockEntity(neighbor);
+        boolean noNeighbor = neighbor.equals(BlockPos.ZERO) && rack.getX() + rack.getZ() != 1;
+        final AbstractTileEntityRack neighborRack = noNeighbor ? null : (AbstractTileEntityRack) inv.player.level().getBlockEntity(neighbor);
 
         if (neighborRack != null)
         {
             if (abstractTileEntityRack.getBlockState().getValue(AbstractBlockMinecoloniesRack.VARIANT) != RackType.NO_RENDER)
             {
-                this.inventory = new CombinedInvWrapper(abstractTileEntityRack.getInventory(), neighborRack.getInventory());
+                this.inventory = new CombinedInvWrapper(
+                        abstractTileEntityRack.getItemHandler(),
+                        neighborRack.getItemHandler());
             }
             else
             {
-                this.inventory = new CombinedInvWrapper(neighborRack.getInventory(), abstractTileEntityRack.getInventory());
+                this.inventory = new CombinedInvWrapper(neighborRack.getItemHandler(),
+                        abstractTileEntityRack.getItemHandler());
             }
         }
         else
         {
-            this.inventory = abstractTileEntityRack.getInventory();
+            this.inventory = abstractTileEntityRack.getItemHandler();
         }
 
         this.rack = abstractTileEntityRack;
@@ -227,11 +230,9 @@ public class ContainerRack extends AbstractContainerMenu
     private void updateRacks(final ItemStack stack)
     {
         rack.updateItemStorage();
-        rack.updateWarehouseIfAvailable(stack);
         if (neighborRack != null)
         {
             neighborRack.updateItemStorage();
-            neighborRack.updateWarehouseIfAvailable(stack);
         }
     }
 

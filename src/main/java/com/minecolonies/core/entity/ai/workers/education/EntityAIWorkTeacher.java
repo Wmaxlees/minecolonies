@@ -6,10 +6,11 @@ import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.Skill;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingSchool;
 import com.minecolonies.core.colony.jobs.JobPupil;
 import com.minecolonies.core.colony.jobs.JobTeacher;
@@ -84,14 +85,14 @@ public class EntityAIWorkTeacher extends AbstractEntityAIInteract<JobTeacher, Bu
      */
     private IAIState decide()
     {
-        final int paperInBuilding = InventoryUtils.hasBuildingEnoughElseCount(building, PAPER, 1);
-        final int paperInInv = InventoryUtils.getItemCountInItemHandler((worker.getInventoryCitizen()), PAPER);
-        if (paperInBuilding + paperInInv <= 0)
+        final boolean paperInBuilding = building.hasMatch(PAPER);
+        final boolean paperInInv = worker.getInventory().hasMatch(PAPER);
+        if (!paperInBuilding && !paperInInv)
         {
             requestPaper();
         }
 
-        if (paperInInv == 0 && paperInBuilding > 0)
+        if (!paperInInv && paperInBuilding)
         {
             needsCurrently = new Tuple<>(PAPER, PAPER_TO_REQUEST);
             return GATHERING_REQUIRED_MATERIALS;
@@ -144,15 +145,11 @@ public class EntityAIWorkTeacher extends AbstractEntityAIInteract<JobTeacher, Bu
             worker.setPos(worker.getX(), worker.getY() + 1, worker.getZ());
         }
 
-        final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), PAPER);
-        final int pupilSlot = InventoryUtils.findFirstSlotInItemHandlerWith(pupilToTeach.getInventoryCitizen(), PAPER);
-        if (slot != -1 && pupilSlot == -1)
+        final boolean hasPaper = worker.getInventory().hasMatch(PAPER);
+        final boolean pupilHasPaper = pupilToTeach.getInventory().hasMatch(PAPER);
+        if (hasPaper && !pupilHasPaper)
         {
-            InventoryUtils.transferXOfFirstSlotInItemHandlerWithIntoNextFreeSlotInItemHandler(
-              worker.getInventoryCitizen(),
-              PAPER,
-              1, pupilToTeach.getInventoryCitizen()
-            );
+            InventoryUtils.transfer(worker.getInventory(), pupilToTeach.getInventory(), PAPER, 1, ItemCountType.MATCH_COUNT_EXACTLY);
         }
 
         // Intelligence + PrimarySkill(Knowledge) for amount gained per Teach state.

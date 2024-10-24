@@ -10,7 +10,10 @@ import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingHospital;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -147,10 +150,10 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
                     return FREE_CURE;
                 }
 
-                if (!InventoryUtils.isItemHandlerFull(citizen.getInventoryCitizen()))
+                if (!citizen.getInventory().isEmpty())
                 {
-                    if (hasCureInInventory(disease, worker.getInventoryCitizen()) ||
-                          hasCureInInventory(disease, building.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null)))
+                    if (hasCureInInventory(disease, worker.getInventory()) ||
+                          hasCureInInventory(disease, building))
                     {
                         this.currentPatient = patient;
                         return CURE;
@@ -160,10 +163,9 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
                     final ImmutableList<IRequest<? extends Stack>> completed = building.getCompletedRequestsOfType(worker.getCitizenData(), TypeToken.of(Stack.class));
                     for (final ItemStack cure : IColonyManager.getInstance().getCompatibilityManager().getDisease(diseaseName).getCure())
                     {
-                        if (!InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), stack -> ItemStack.isSameItem(cure, stack)))
+                        if (!worker.getInventory().hasMatch(stack -> ItemStack.isSameItem(cure, stack)))
                         {
-                            if (InventoryUtils.getItemCountInItemHandler(building.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null),
-                              stack -> ItemStack.isSameItem(stack, cure)) >= cure.getCount())
+                            if (building.countMatches(stack -> ItemStack.isSameItem(stack, cure)) >= cure.getCount())
                             {
                                 needsCurrently = new Tuple<>(stack -> ItemStack.isSameItem(stack, cure), cure.getCount());
                                 return GATHERING_REQUIRED_MATERIALS;
@@ -207,7 +209,7 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
                     return CURE;
                 }
 
-                if (!hasCureInInventory(disease, citizen.getInventoryCitizen()))
+                if (!hasCureInInventory(disease, citizen.getInventory()))
                 {
                     patient.setState(Patient.PatientState.NEW);
                     return DECIDE;
@@ -272,8 +274,8 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
 
         for (final ItemStack cure : IColonyManager.getInstance().getCompatibilityManager().getDisease(diseaseName).getCure())
         {
-            if (!InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), stack -> ItemStack.isSameItem(cure, stack))
-                  && !InventoryUtils.hasItemInItemHandler(building.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null), stack -> ItemStack.isSameItem(cure, stack)))
+            if (!worker.getInventory().hasMatch(stack -> ItemStack.isSameItem(cure, stack))
+                  && !building.hasMatch(stack -> ItemStack.isSameItem(cure, stack)))
             {
                 boolean hasRequest = false;
                 for (final IRequest<? extends Stack> request : list)
@@ -339,13 +341,13 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
             return DECIDE;
         }
 
-        if (!hasCureInInventory(disease, worker.getInventoryCitizen()))
+        if (!hasCureInInventory(disease, worker.getInventory()))
         {
-            if (hasCureInInventory(disease, building.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null)))
+            if (hasCureInInventory(disease, building))
             {
                 for (final ItemStack cure : disease.getCure())
                 {
-                    if (InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), stack -> ItemStack.isSameItem(stack, cure)) < cure.getCount())
+                    if (worker.getInventory().countMatches(stack -> ItemStack.isSameItem(stack, cure)) < cure.getCount())
                     {
                         needsCurrently = new Tuple<>(stack -> ItemStack.isSameItem(stack, cure), 1);
                         return GATHERING_REQUIRED_MATERIALS;
@@ -356,23 +358,20 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
             return DECIDE;
         }
 
-        if (!hasCureInInventory(disease, citizen.getInventoryCitizen()))
+        if (!hasCureInInventory(disease, citizen.getInventory()))
         {
             for (final ItemStack cure : disease.getCure())
             {
-                if (InventoryUtils.getItemCountInItemHandler(citizen.getInventoryCitizen(), stack -> ItemStack.isSameItem(stack, cure)) < cure.getCount())
+                if (citizen.getInventory().countMatches(stack -> ItemStack.isSameItem(stack, cure)) < cure.getCount())
                 {
-                    if (InventoryUtils.isItemHandlerFull(citizen.getInventoryCitizen()))
+                    if (citizen.getInventory().isFull())
                     {
                         data.triggerInteraction(new StandardInteraction(Component.translatable(PATIENT_FULL_INVENTORY), ChatPriority.BLOCKING));
                         currentPatient = null;
                         return DECIDE;
                     }
-                    InventoryUtils.transferXOfFirstSlotInItemHandlerWithIntoNextFreeSlotInItemHandler(
-                      worker.getInventoryCitizen(),
-                      stack -> ItemStack.isSameItem(cure, stack),
-                      cure.getCount(), citizen.getInventoryCitizen()
-                    );
+                    InventoryUtils.transfer(worker.getInventory(), citizen.getInventory(),
+                            stack -> ItemStack.isSameItem(cure, stack), cure.getCount(), ItemCountType.MATCH_COUNT_EXACTLY);
                 }
             }
         }
@@ -513,14 +512,14 @@ public class EntityAIWorkHealer extends AbstractEntityAIInteract<JobHealer, Buil
      * Check if the cure for a certain illness is in the inv.
      *
      * @param disease the disease to check.
-     * @param handler the inventory to check.
+     * @param inventory the inventory to check.
      * @return true if so.
      */
-    private boolean hasCureInInventory(final Disease disease, final IItemHandler handler)
+    private boolean hasCureInInventory(final Disease disease, final IInventory inventory)
     {
         for (final ItemStack cure : disease.getCure())
         {
-            if (InventoryUtils.getItemCountInItemHandler(handler, stack -> ItemStack.isSameItem(cure, stack)) < cure.getCount())
+            if (inventory.countMatches(stack -> ItemStack.isSameItem(cure, stack)) < cure.getCount())
             {
                 return false;
             }

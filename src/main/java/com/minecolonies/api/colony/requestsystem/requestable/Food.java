@@ -4,9 +4,11 @@ import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.requestsystem.factory.IFactoryController;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.ReflectionUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -240,7 +242,12 @@ public class Food implements IDeliverable
         {
             return false;
         }
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getResult(), food.getResult());
+
+        final Matcher matcher = new Matcher.Builder(getResult().getItem())
+            .compareDamage(getResult().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getResult().getTag())
+            .build();
+        return ItemStackUtils.compareItemStack(matcher, food.getResult());
     }
 
     @Override

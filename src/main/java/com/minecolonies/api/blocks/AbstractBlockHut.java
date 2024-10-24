@@ -23,6 +23,7 @@ import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -374,7 +375,7 @@ public abstract class AbstractBlockHut<B extends AbstractBlockHut<B>> extends Ab
             return requirements;
         }
 
-        if (InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()), this) == -1)
+        if (!InventoryUtils.doesPlayerHave(player, this))
         {
             requirements.add(Component.translatable("com.minecolonies.coremod.hut.cost", Component.translatable("block." + Constants.MOD_ID + "." + getHutName())).setStyle((Style.EMPTY).withColor(ChatFormatting.RED)));
             return requirements;

@@ -1,7 +1,8 @@
 package com.minecolonies.api.entity.ai.workers.util;
 
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ArmorItem;

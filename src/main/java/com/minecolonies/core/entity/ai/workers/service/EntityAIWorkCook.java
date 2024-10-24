@@ -13,8 +13,14 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
+import com.minecolonies.api.inventory.InventoryCitizen;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingCook;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -24,6 +30,7 @@ import com.minecolonies.core.entity.citizen.EntityCitizen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.FurnaceBlockEntity;
@@ -35,12 +42,12 @@ import java.util.*;
 import java.util.function.Predicate;
 
 import static com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState.*;
-import static com.minecolonies.api.util.ItemStackUtils.CAN_EAT;
 import static com.minecolonies.api.util.constant.CitizenConstants.AVERAGE_SATURATION;
 import static com.minecolonies.api.util.constant.Constants.*;
 import static com.minecolonies.api.util.constant.StatisticsConstants.FOOD_SERVED;
 import static com.minecolonies.api.util.constant.TranslationConstants.FURNACE_USER_NO_FOOD;
 import static com.minecolonies.api.util.constant.TranslationConstants.MESSAGE_INFO_CITIZEN_COOK_SERVE_PLAYER;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.CAN_EAT;
 import static com.minecolonies.core.colony.buildings.modules.BuildingModules.ITEMLIST_FOODEXCLUSION;
 
 /**
@@ -112,9 +119,12 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
     @Override
     protected void extractFromFurnace(final FurnaceBlockEntity furnace)
     {
-        InventoryUtils.transferItemStackIntoNextFreeSlotInItemHandler(
-          new InvWrapper(furnace), RESULT_SLOT,
-          worker.getInventoryCitizen());
+        final ItemStack extractStack = furnace.getItem(RESULT_SLOT);
+        final Matcher matcher = new Matcher.Builder(extractStack.getItem())
+            .compareDamage(extractStack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.EXACT_MATCH, extractStack.getTag())
+            .build();
+        InventoryUtils.transfer(furnace, worker.getInventory(), matcher, 0, ItemCountType.IGNORE_COUNT);
         worker.getCitizenExperienceHandler().addExperience(BASE_XP_GAIN);
         this.incrementActionsDoneAndDecSaturation();
     }
@@ -143,9 +153,7 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
             return true;
         }
         final int buildingLimit = Math.max(1, building.getBuildingLevel() * building.getBuildingLevel()) * SLOT_PER_LINE;
-        return InventoryUtils.getCountFromBuildingWithLimit(building,
-          ItemStackUtils.CAN_EAT.and(stack -> FoodUtils.canEat(stack, building.getBuildingLevel() - 1)),
-          stack -> stack.getMaxStackSize() * 6) > buildingLimit;
+        return building.countMatches(ItemStackUtils.CAN_EAT.and(stack -> FoodUtils.canEat(stack, building.getBuildingLevel() - 1))) > buildingLimit;
     }
 
     @Override
@@ -192,18 +200,21 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
             return getState();
         }
 
-        final IItemHandler handler = citizenToServe.isEmpty() ? new InvWrapper(playerToServe.get(0).getInventory()) : citizenToServe.get(0).getInventoryCitizen();
+        final boolean servePlayer = citizenToServe.isEmpty();
+        
+        Player player = servePlayer ? playerToServe.get(0) : null;
+        InventoryCitizen inventoryCitizen = servePlayer ? null : citizenToServe.get(0).getInventory();
 
-        if (InventoryUtils.isItemHandlerFull(handler))
+        if (servePlayer ? InventoryUtils.isPlayerInventoryFull(player) : inventoryCitizen.isFull())
         {
-            if (!citizenToServe.isEmpty())
+            if (!servePlayer)
             {
-                final int foodSlot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(),
-                  stack -> ItemStackUtils.CAN_EAT.test(stack) && canEat(stack, citizenToServe.isEmpty() ? null : citizenToServe.get(0)));
-                if (foodSlot != -1)
+                final ItemStack foodItemStack = inventoryCitizen
+                        .extractStack(stack -> ItemStackUtils.CAN_EAT.test(stack)
+                                && canEat(stack, citizenToServe.get(0)), 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
+                if (!foodItemStack.isEmpty())
                 {
-                    final ItemStack stack = worker.getInventoryCitizen().extractItem(foodSlot, 1, false);
-                    citizenToServe.get(0).getCitizenData().increaseSaturation(FoodUtils.getFoodValue(stack, worker));
+                    citizenToServe.get(0).getCitizenData().increaseSaturation(FoodUtils.getFoodValue(foodItemStack, worker));
                     worker.getCitizenColonyHandler().getColony().getStatisticsManager().increment(FOOD_SERVED, worker.getCitizenColonyHandler().getColony().getDay());
                 }
             }
@@ -211,16 +222,25 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
             removeFromQueue();
             return getState();
         }
-        else if (InventoryUtils.hasItemInItemHandler(handler, stack -> CAN_EAT.test(stack) && canEat(stack, citizenToServe.isEmpty() ? null : citizenToServe.get(0))))
+        else if (servePlayer
+                ? InventoryUtils.doesPlayerHave(player, stack -> CAN_EAT.test(stack) && canEat(stack, null))
+                : inventoryCitizen.hasMatch(stack -> CAN_EAT.test(stack) && canEat(stack, citizenToServe.get(0))))
         {
             removeFromQueue();
             return getState();
         }
 
-        final int count = InventoryUtils.transferFoodUpToSaturation(worker,
-          handler,
-          building.getBuildingLevel() * SATURATION_TO_SERVE,
-          stack -> CAN_EAT.test(stack) && canEat(stack, citizenToServe.isEmpty() ? null : citizenToServe.get(0)));
+        final int count;
+        if (servePlayer)
+        {
+            count = InventoryUtils.transferFoodUpToSaturation(worker.getInventory(), player, building.getBuildingLevel() * SATURATION_TO_SERVE,
+                    stack -> CAN_EAT.test(stack) && canEat(stack, null));
+        }
+        else
+        {
+            count = InventoryUtils.transferFoodUpToSaturation(worker.getInventory(), citizenToServe.get(0).getInventory(), building.getBuildingLevel() * SATURATION_TO_SERVE,
+                    stack -> CAN_EAT.test(stack) && canEat(stack, citizenToServe.get(0)));
+        }
         if (count <= 0)
         {
             removeFromQueue();
@@ -305,19 +325,19 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
         {
             if (citizen.getCitizenJobHandler().getColonyJob() instanceof JobCook
                   || !shouldBeFed(citizen)
-                  || InventoryUtils.hasItemInItemHandler(citizen.getItemHandlerCitizen(), stack -> CAN_EAT.test(stack) && canEat(stack, citizen)))
+                  || citizen.getInventory().hasMatch(stack -> CAN_EAT.test(stack) && canEat(stack, citizen)))
             {
                 continue;
             }
 
             final Predicate<ItemStack> foodPredicate = stack -> ItemStackUtils.CAN_EAT.test(stack) && canEat(stack, citizen);
-            if (InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), foodPredicate))
+            if (worker.getInventory().hasMatch(foodPredicate))
             {
                 citizenToServe.add(citizen);
             }
             else
             {
-                if (InventoryUtils.hasItemInProvider(building, foodPredicate))
+                if (building.hasMatch(foodPredicate))
                 {
                     hasFoodInBuilding = true;
                     needsCurrently = new Tuple<>(foodPredicate, STACKSIZE);
@@ -328,9 +348,9 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
         if (!playerToServe.isEmpty())
         {
             final Predicate<ItemStack> foodPredicate = stack -> ItemStackUtils.CAN_EAT.test(stack);
-            if (!InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), foodPredicate))
+            if (!worker.getInventory().hasMatch(foodPredicate))
             {
-                if (InventoryUtils.hasItemInProvider(building, foodPredicate))
+                if (building.hasMatch(foodPredicate))
                 {
                     needsCurrently = new Tuple<>(foodPredicate, STACKSIZE);
                     return GATHERING_REQUIRED_MATERIALS;
@@ -374,11 +394,11 @@ public class EntityAIWorkCook extends AbstractEntityAIUsesFurnace<JobCook, Build
     protected IRequestable getSmeltAbleClass()
     {
         final List<ItemStorage> blockedItems = new ArrayList<>(building.getModule(ITEMLIST_FOODEXCLUSION).getList());
-        for (final Map.Entry<ItemStorage, Integer> content : building.getTileEntity().getAllContent().entrySet())
+        for (final Map.Entry<ItemStack, Integer> content : building.getTileEntity().getAllItems().entrySet())
         {
-            if (content.getValue() > content.getKey().getItemStack().getMaxStackSize() * 6 && ItemStackUtils.CAN_EAT.test(content.getKey().getItemStack()))
+            if (content.getValue() > content.getKey().getMaxStackSize() * 6 && ItemStackUtils.CAN_EAT.test(content.getKey()))
             {
-                blockedItems.add(content.getKey());
+                blockedItems.add(new ItemStorage(content.getKey()));
             }
         }
 

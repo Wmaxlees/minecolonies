@@ -6,8 +6,8 @@ import com.minecolonies.api.colony.jobs.registry.JobEntry;
 import com.minecolonies.api.crafting.IRecipeStorage;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
@@ -28,11 +28,11 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-import static com.minecolonies.api.util.ItemStackUtils.ISFOOD;
 import static com.minecolonies.api.util.constant.BuildingConstants.CONST_DEFAULT_MAX_BUILDING_LEVEL;
 import static com.minecolonies.api.util.constant.Constants.STACKSIZE;
 import static com.minecolonies.api.util.constant.EquipmentLevelConstants.TOOL_LEVEL_WOOD_OR_GOLD;
 import static com.minecolonies.core.colony.buildings.modules.BuildingModules.ITEMLIST_FOODEXCLUSION;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.ISFOOD;
 
 public class BuildingNetherWorker extends AbstractBuilding
 {

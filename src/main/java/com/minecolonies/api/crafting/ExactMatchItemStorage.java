@@ -1,6 +1,8 @@
 package com.minecolonies.api.crafting;
 
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -28,7 +30,17 @@ public class ExactMatchItemStorage extends ItemStorage
         }
         if (comparisonObject instanceof final ExactMatchItemStorage that)
         {
-            return ItemStackUtils.compareItemStacksIgnoreStackSize(that.getItemStack(), this.getItemStack(), !(super.shouldIgnoreDamageValue || that.shouldIgnoreDamageValue), !(this.shouldIgnoreNBTValue || that.shouldIgnoreNBTValue), false, true);
+            final Matcher.Builder builder = new Matcher.Builder(getItemStack().getItem());
+            if (!(this.shouldIgnoreDamageValue || that.shouldIgnoreDamageValue))
+            {
+                builder.compareDamage(getItemStack().getDamageValue());
+            }
+            if (!(this.shouldIgnoreNBTValue || that.shouldIgnoreNBTValue))
+            {
+                builder.compareNBT(ItemNBTMatcher.EXACT_MATCH, getItemStack().getTag());
+            }
+
+            return ItemStackUtils.compareItemStack(builder.build(), this.getItemStack());
 
         }
         return false;

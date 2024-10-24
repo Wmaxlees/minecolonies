@@ -4,7 +4,8 @@ import com.minecolonies.api.colony.interactionhandling.ChatPriority;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.Skill;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingSchool;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -16,6 +17,7 @@ import com.minecolonies.core.network.messages.client.CircleParticleEffectMessage
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -160,11 +162,9 @@ public class EntityAIWorkPupil extends AbstractEntityAIInteract<JobPupil, Buildi
             SittingEntity.sitDown(studyPos, worker, maxSittingTicks * 20);
         }
 
-        final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(worker.getInventoryCitizen(), PAPER);
-
-        if (slot != -1)
+        final boolean hasPaper = worker.getInventory().setHeldItem(InteractionHand.MAIN_HAND, PAPER);
+        if (hasPaper)
         {
-            worker.setItemSlot(EquipmentSlot.MAINHAND, worker.getInventoryCitizen().getStackInSlot(slot));
             Network.getNetwork().sendToTrackingEntity(new CircleParticleEffectMessage(worker.position().add(0, 1, 0), ParticleTypes.ENCHANT, sittingTicks), worker);
         }
         else
@@ -186,9 +186,10 @@ public class EntityAIWorkPupil extends AbstractEntityAIInteract<JobPupil, Buildi
             worker.setPos(worker.getX(), worker.getY() + 1, worker.getZ());
         }
 
-        if (slot != -1)
+        if (hasPaper)
         {
-            InventoryUtils.reduceStackInItemHandler(worker.getInventoryCitizen(), new ItemStack(Items.PAPER), 1);
+            final Matcher matcher = new Matcher.Builder(Items.PAPER).build();
+            worker.getInventory().reduceStackSize(matcher, 1);
             final double bonus = 50.0 * (1 + worker.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(TEACHING));
 
             worker.getCitizenData().getCitizenSkillHandler().addXpToSkill(Skill.Intelligence, bonus, worker.getCitizenData());

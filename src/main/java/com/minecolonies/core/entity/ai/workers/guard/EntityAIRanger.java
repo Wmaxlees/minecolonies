@@ -1,7 +1,9 @@
 package com.minecolonies.core.entity.ai.workers.guard;
 
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.colony.jobs.JobRanger;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
@@ -34,7 +36,8 @@ public class EntityAIRanger extends AbstractEntityAIGuard<JobRanger, AbstractBui
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (worker.getCitizenInventoryHandler().hasItemInInventory(Items.ARROW))
+        final Matcher matcher = new Matcher.Builder(Items.ARROW).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             renderMeta += RENDER_META_ARROW;
         }
@@ -49,12 +52,8 @@ public class EntityAIRanger extends AbstractEntityAIGuard<JobRanger, AbstractBui
         if (worker.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(ARCHER_USE_ARROWS) > 0)
         {
             // Pickup arrows and request arrows
-            InventoryUtils.transferXOfFirstSlotInProviderWithIntoNextFreeSlotInItemHandler(building,
-              item -> item.getItem() instanceof ArrowItem,
-              64,
-              worker.getInventoryCitizen());
-
-            if (InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), item -> item.getItem() instanceof ArrowItem) < 16)
+            InventoryUtils.transfer(building.getInventories(), worker.getInventory(), item -> item.getItem() instanceof ArrowItem, 64, ItemCountType.USE_COUNT_AS_MAXIMUM);
+            if (worker.getInventory().countMatches(item -> item.getItem() instanceof ArrowItem) < 16)
             {
                 checkIfRequestForItemExistOrCreateAsync(new ItemStack(Items.ARROW), 64, 16);
             }

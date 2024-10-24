@@ -6,9 +6,10 @@ import com.minecolonies.api.colony.jobs.registry.JobEntry;
 import com.minecolonies.api.crafting.GenericRecipe;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.IRecipeStorage;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.util.CraftingUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.OptionalPredicate;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import com.minecolonies.core.colony.buildings.modules.CraftingWorkerBuildingModule;
@@ -22,9 +23,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static com.minecolonies.api.util.ItemStackUtils.ISFOOD;
 import static com.minecolonies.api.util.constant.Suppression.OVERRIDE_EQUALS;
 import static com.minecolonies.api.util.constant.TagConstants.CRAFTING_COOK;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.ISFOOD;
 
 /**
  * Class of the kitchen building.
@@ -168,13 +169,9 @@ public class BuildingKitchen extends AbstractBuilding
                 storage = FurnaceRecipes.getInstance().getFirstSmeltingRecipeByResult(stackPredicate);
                 if (storage != null)
                 {
-                    final Set<IItemHandler> handlers = new HashSet<>();
-                    for (final ICitizenData workerEntity :  building.getModuleMatching(CraftingWorkerBuildingModule.class, m -> m.getJobEntry() == jobEntry).getAssignedCitizen())
-                    {
-                        handlers.add(workerEntity.getInventory());
-                    }
+                    final List<IInventory> inventories = building.getInventories();
 
-                    if (!storage.canFullFillRecipe(count, Collections.emptyMap(), new ArrayList<>(handlers), building))
+                    if (!storage.canFullFillRecipe(count, Collections.emptyMap(), (IInventory[])inventories.toArray()))
                     {
                         return null;
                     }

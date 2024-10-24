@@ -9,9 +9,10 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuildingStructureBuilder;
 import com.minecolonies.core.colony.jobs.AbstractJobStructure;
 import com.minecolonies.core.entity.ai.workers.AbstractEntityAIStructure;
@@ -192,7 +193,7 @@ public class BuildingStructureHandler<J extends AbstractJobStructure<?, J>, B ex
     @Override
     public IItemHandler getInventory()
     {
-        return structureAI.getWorker().getInventoryCitizen();
+        return structureAI.getWorker().getInventory();
     }
 
     @Override
@@ -271,7 +272,11 @@ public class BuildingStructureHandler<J extends AbstractJobStructure<?, J>, B ex
             {
                 if (!ItemStackUtils.isEmpty(tempStack))
                 {
-                    InventoryUtils.reduceStackInItemHandler(this.getInventory(), tempStack);
+                    final Matcher matcher = new Matcher.Builder(tempStack.getItem())
+                        .compareDamage(tempStack.getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, tempStack.getTag())
+                        .build();
+                    structureAI.getWorker().getInventory().reduceStackSize(matcher, 1);
                 }
             }
         }

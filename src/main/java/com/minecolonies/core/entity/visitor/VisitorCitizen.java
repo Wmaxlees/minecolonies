@@ -14,6 +14,7 @@ import com.minecolonies.api.inventory.container.ContainerCitizenInventory;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.MessageUtils.MessagePriority;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.client.gui.WindowInteraction;
@@ -55,12 +56,12 @@ import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import static com.minecolonies.api.util.ItemStackUtils.ISFOOD;
 import static com.minecolonies.api.util.constant.CitizenConstants.TICKS_20;
 import static com.minecolonies.api.util.constant.Constants.*;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_CITIZEN;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_COLONY_ID;
 import static com.minecolonies.api.util.constant.TranslationConstants.*;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.ISFOOD;
 import static com.minecolonies.core.entity.ai.minimal.EntityAIInteractToggleAble.*;
 
 /**
@@ -92,10 +93,6 @@ VisitorCitizen extends AbstractEntityCitizen
      * The citizen item handler.
      */
     private ICitizenItemHandler      citizenItemHandler;
-    /**
-     * The citizen inv handler.
-     */
-    private ICitizenInventoryHandler citizenInventoryHandler;
 
     /**
      * The citizen colony handler.
@@ -134,7 +131,6 @@ VisitorCitizen extends AbstractEntityCitizen
         this.goalSelector = new CustomGoalSelector(this.goalSelector);
         this.targetSelector = new CustomGoalSelector(this.targetSelector);
         this.citizenItemHandler = new CitizenItemHandler(this);
-        this.citizenInventoryHandler = new CitizenInventoryHandler(this);
         this.citizenColonyHandler = new VisitorColonyHandler(this);
         this.citizenJobHandler = new CitizenJobHandler(this);
         this.citizenSleepHandler = new CitizenSleepHandler(this);
@@ -256,16 +252,9 @@ VisitorCitizen extends AbstractEntityCitizen
      */
     @Override
     @NotNull
-    public InventoryCitizen getInventoryCitizen()
+    public InventoryCitizen getInventory()
     {
         return getCitizenData().getInventory();
-    }
-
-    @Override
-    @NotNull
-    public IItemHandler getItemHandlerCitizen()
-    {
-        return getInventoryCitizen();
     }
 
     /**
@@ -353,18 +342,6 @@ VisitorCitizen extends AbstractEntityCitizen
     public ICitizenItemHandler getCitizenItemHandler()
     {
         return citizenItemHandler;
-    }
-
-    @Override
-    public ICitizenInventoryHandler getCitizenInventoryHandler()
-    {
-        return citizenInventoryHandler;
-    }
-
-    @Override
-    public void setCitizenInventoryHandler(final ICitizenInventoryHandler citizenInventoryHandler)
-    {
-        this.citizenInventoryHandler = citizenInventoryHandler;
     }
 
     @Override
@@ -651,15 +628,7 @@ VisitorCitizen extends AbstractEntityCitizen
     @Override
     protected void dropEquipment()
     {
-        //Drop actual inventory
-        for (int i = 0; i < getInventoryCitizen().getSlots(); i++)
-        {
-            final ItemStack itemstack = getCitizenData().getInventory().getStackInSlot(i);
-            if (ItemStackUtils.getSize(itemstack) > 0)
-            {
-                citizenItemHandler.entityDropItem(itemstack);
-            }
-        }
+        getInventory().dropAllItems(level, new BlockPos((int) getX(), (int) getY(), (int) getZ()));
     }
 
     @Override

@@ -4,9 +4,11 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.ai.workers.util.StudyItem;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingLibrary;
 import com.minecolonies.core.colony.jobs.JobStudent;
 import com.minecolonies.core.entity.ai.workers.AbstractEntityAISkill;
@@ -78,7 +80,7 @@ public class EntityAIStudy extends AbstractEntityAISkill<JobStudent, BuildingLib
     protected void updateRenderMetaData()
     {
         String renderMeta = getState() == IDLE ? "" : RENDER_META_WORKING;
-        if (InventoryUtils.hasItemInItemHandler(worker.getInventoryCitizen(), itemStack -> itemStack.getItem() == Items.BOOK || itemStack.getItem() == Items.PAPER))
+        if (worker.getInventory().hasMatch(itemStack -> itemStack.getItem() == Items.BOOK || itemStack.getItem() == Items.PAPER))
         {
             renderMeta += RENDER_META_BOOK;
         }
@@ -119,12 +121,10 @@ public class EntityAIStudy extends AbstractEntityAISkill<JobStudent, BuildingLib
         final List<StudyItem> currentItems = new ArrayList<>();
         for (final StudyItem curItem : building.getStudyItems())
         {
-            final int slot = InventoryUtils.findFirstSlotInProviderNotEmptyWith(worker,
-              itemStack -> !ItemStackUtils.isEmpty(itemStack) && itemStack.getItem() == curItem.getItem());
+            final boolean hasStudyItem = worker.getInventory().hasMatch(itemStack -> !ItemStackUtils.isEmpty(itemStack) && itemStack.getItem() == curItem.getItem());
 
-            if (slot != -1)
+            if (hasStudyItem)
             {
-                curItem.setSlot(slot);
                 currentItems.add(curItem);
             }
         }
@@ -134,8 +134,9 @@ public class EntityAIStudy extends AbstractEntityAISkill<JobStudent, BuildingLib
         {
             for (final StudyItem studyItem : building.getStudyItems())
             {
-                final int bSlot = InventoryUtils.findFirstSlotInProviderWith(building, studyItem.getItem());
-                if (bSlot > -1)
+                final Matcher matcher = new Matcher.Builder(studyItem.getItem()).build();
+                final boolean buildingHasItem = building.hasMatch(matcher);
+                if (buildingHasItem)
                 {
                     needsCurrently = new Tuple<>(itemStack -> studyItem.getItem() == itemStack.getItem(), 10);
                     return GATHERING_REQUIRED_MATERIALS;
@@ -163,7 +164,8 @@ public class EntityAIStudy extends AbstractEntityAISkill<JobStudent, BuildingLib
             // Break item rand
             if (world.random.nextInt(100) <= chosenItem.getBreakPct())
             {
-                data.getInventory().extractItem(chosenItem.getSlot(), 1, false);
+                final Matcher matcher = new Matcher.Builder(chosenItem.getItem()).build();
+                data.getInventory().extractStack(stack -> ItemStackUtils.compareItemStack(matcher, stack), 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
                 building.getModule(STATS_MODULE).increment(ITEM_USED + ";" + chosenItem.getItem().getDescriptionId());
             }
         }

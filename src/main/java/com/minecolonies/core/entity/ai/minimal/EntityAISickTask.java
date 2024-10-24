@@ -12,8 +12,9 @@ import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickingT
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.util.BlockPosUtil;
 import com.minecolonies.api.util.Disease;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingHospital;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -278,11 +279,8 @@ public class EntityAISickTask implements IStateAI
         {
             for (final ItemStack cure : disease.getCure())
             {
-                final int slot = InventoryUtils.findFirstSlotInProviderNotEmptyWith(citizen, stack -> ItemStack.isSameItem(cure, stack));
-                if (slot != -1)
-                {
-                    citizenData.getInventory().extractItem(slot, 1, false);
-                }
+                final Matcher matcher = new Matcher.Builder(cure.getItem()).build();
+                citizen.getInventory().extractStacks(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
             }
         }
 
@@ -455,8 +453,8 @@ public class EntityAISickTask implements IStateAI
         final Disease disease = IColonyManager.getInstance().getCompatibilityManager().getDisease(id);
         for (final ItemStack cure : disease.getCure())
         {
-            final int slot = InventoryUtils.findFirstSlotInProviderNotEmptyWith(citizen, stack -> ItemStack.isSameItem(cure, stack));
-            if (slot == -1)
+            final boolean hasCure = citizen.getInventory().hasMatch(stack -> ItemStack.isSameItem(cure, stack));
+            if (!hasCure)
             {
                 if (citizen.getCitizenDiseaseHandler().isSick())
                 {

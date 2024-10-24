@@ -4,7 +4,6 @@ import com.minecolonies.api.colony.jobs.registry.JobEntry;
 import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.crafting.ModCraftingTypes;
 import com.minecolonies.api.crafting.registry.CraftingType;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.OptionalPredicate;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -46,7 +45,7 @@ public abstract class AbstractDOCraftingBuildingModule extends AbstractCraftingB
                 // any one compatible ingredient in any slot makes the whole recipe acceptable.
                 for (final ItemStack ingredientStack : slot)
                 {
-                    if (!ItemStackUtils.isEmpty(stack) && validator.test(ingredientStack).orElse(false))
+                    if (!stack.isEmpty() && validator.test(ingredientStack).orElse(false))
                     {
                         return true;
                     }

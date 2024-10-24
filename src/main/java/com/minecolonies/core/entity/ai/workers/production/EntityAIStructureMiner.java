@@ -11,6 +11,9 @@ import com.minecolonies.core.entity.pathfinding.PathfindingUtils;
 import com.minecolonies.core.entity.pathfinding.SurfaceType;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.modules.MinerLevelManagementModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingMiner;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -38,6 +41,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 
 import static com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState.*;
 import static com.minecolonies.api.research.util.ResearchConstants.MORE_ORES;
@@ -203,9 +207,9 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
         StringBuilder renderData = new StringBuilder(getState() == MINER_MINING_SHAFT || getState() == MINE_BLOCK || getState() == BUILDING_STEP ? RENDER_META_WORKING : "");
         final ItemStack block = new ItemStack(getMainFillBlock());
 
-        for (int slot = 0; slot < worker.getInventoryCitizen().getSlots(); slot++)
+        for (final Map.Entry<ItemStack, Integer> stackAndCount : worker.getInventory().getAllItems().entrySet())
         {
-            final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(slot);
+            final ItemStack stack = stackAndCount.getKey();
             if (stack.getItem() == Items.TORCH && renderData.indexOf(RENDER_META_TORCH) == -1)
             {
                 renderData.append(RENDER_META_TORCH);
@@ -800,18 +804,10 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
 
     private void setBlockFromInventory(@NotNull final BlockPos location, final Block block, final BlockState metadata)
     {
-        final int slot;
-        if (block instanceof LadderBlock)
+        final Matcher matcher = new Matcher.Builder(ItemStackUtils.getItemFromBlock(block)).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
-            slot = worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(block);
-        }
-        else
-        {
-            slot = worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(block);
-        }
-        if (slot != -1)
-        {
-            getInventory().extractItem(slot, 1, false);
+            getInventory().extractStack(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
             //Flag 1+2 is needed for updates
             WorldUtil.setBlockState(world, location, metadata);
         }
@@ -960,8 +956,7 @@ public class EntityAIStructureMiner extends AbstractEntityAIStructureWithWorkOrd
         if (IColonyManager.getInstance().getCompatibilityManager().isLuckyBlock(blockToMine.getBlock()))
         {
             final int level = building.getBuildingLevel();
-            InventoryUtils.transferItemStackIntoNextBestSlotInItemHandler(IColonyManager.getInstance().getCompatibilityManager().getRandomLuckyOre(chance, level),
-              worker.getInventoryCitizen());
+            worker.getInventory().insert(IColonyManager.getInstance().getCompatibilityManager().getRandomLuckyOre(chance, level), false);
         }
 
         if (IColonyManager.getInstance().getCompatibilityManager().isOre(blockToMine))

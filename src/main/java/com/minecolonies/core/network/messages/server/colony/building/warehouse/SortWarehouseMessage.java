@@ -51,7 +51,7 @@ public class SortWarehouseMessage extends AbstractBuildingServerMessage<Building
     {
         if (building.getBuildingLevel() >= REQUIRED_LEVEL_TO_SORT_WAREHOUSE)
         {
-            building.getCapability(ForgeCapabilities.ITEM_HANDLER, null).ifPresent(inv -> SortingUtils.sort((CombinedItemHandler) inv));
+            SortingUtils.sort(building.getInventories());
         }
     }
 }

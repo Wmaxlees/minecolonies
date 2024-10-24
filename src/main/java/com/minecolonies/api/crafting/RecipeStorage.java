@@ -9,9 +9,13 @@ import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.registry.RecipeTypeEntry;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
@@ -207,7 +211,10 @@ public class RecipeStorage implements IRecipeStorage
 
             for (ItemStack result : this.secondaryOutputs)
             {
-                if (ItemStackUtils.compareItemStacksIgnoreStackSize(inputItem.getItemStack(), result, false, true) && result.isDamageableItem())
+                final Matcher matcher = new Matcher.Builder(inputItem.getItemStack().getItem())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, inputItem.getItemStack().getTag())
+                    .build();
+                if (matcher.match(result) && result.isDamageableItem())
                 {
                     inputItem = new ItemStorage(inputItem.getItemStack(), inputItem.getAmount(), true, inputItem.shouldIgnoreNBTValue);
                     this.tools.add(result);
@@ -272,38 +279,24 @@ public class RecipeStorage implements IRecipeStorage
     }
 
     @Override
-    public boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final IItemHandler... inventories)
+    public boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final IInventory... inventories)
     {
         final List<ItemStorage> items = getCleanedInput();
 
         for (final ItemStorage storage : items)
         {
             final ItemStack stack = storage.getItemStack();
-            final int availableCount = InventoryUtils.getItemCountInItemHandlers(
-              ImmutableList.copyOf(inventories),
-              itemStack -> !ItemStackUtils.isEmpty(itemStack)
-                             && ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack, false, !storage.ignoreNBT()));
-
-            if (!canFulfillItemStorage(qty, existingRequirements, availableCount, storage))
+            final Matcher.Builder builder = new Matcher.Builder(stack.getItem());
+            if (!storage.ignoreNBT())
             {
-                return false;
+                builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag());
             }
-        }
-        return true;
-    }
-
-    @Override
-    public boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final List<IItemHandler> citizen, @NotNull final IBuilding building)
-    {
-        final List<ItemStorage> items = getCleanedInput();
-
-        for (final ItemStorage storage : items)
-        {
-            final ItemStack stack = storage.getItemStack();
-            final int availableCount = InventoryUtils.getItemCountInItemHandlers(citizen,
-              itemStack -> !ItemStackUtils.isEmpty(itemStack)
-                             && ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack, false, !storage.ignoreNBT()))
-                                         + InventoryUtils.getCountFromBuilding(building, storage);;
+            final Matcher matcher = builder.build();
+            int availableCount = 0;
+            for (IInventory inventory : inventories)
+            {
+                availableCount += inventory.countMatches(matcher);
+            }
 
             if (!canFulfillItemStorage(qty, existingRequirements, availableCount, storage))
             {
@@ -324,10 +317,16 @@ public class RecipeStorage implements IRecipeStorage
     private boolean canFulfillItemStorage(final int qty, final Map<ItemStorage, Integer> existingRequirements, int availableCount, final ItemStorage storage)
     {
         final ItemStack stack = storage.getItemStack();
+        final Matcher.Builder builder = new Matcher.Builder(stack.getItem());
+        if (!storage.ignoreNBT())
+        {
+            builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag());
+        }
+        final Matcher matcher = builder.build();
         final int neededCount;
         if(!secondaryOutputs.isEmpty() || !tools.isEmpty())
         {
-            if(!ItemStackUtils.compareItemStackListIgnoreStackSize(this.getCraftingToolsAndSecondaryOutputs(), stack, false, !storage.ignoreNBT()))
+            if(!ItemStackUtils.compareItemStacks(this.getCraftingToolsAndSecondaryOutputs(), matcher))
             {
                 neededCount = storage.getAmount() * qty;
             }
@@ -339,7 +338,7 @@ public class RecipeStorage implements IRecipeStorage
         else
         {
             final ItemStack container = stack.getCraftingRemainingItem();
-            if(ItemStackUtils.isEmpty(container) || !ItemStackUtils.compareItemStacksIgnoreStackSize(stack, container, false, !storage.ignoreNBT()))
+            if(ItemStackUtils.isEmpty(container) || !ItemStackUtils.compareItemStack(matcher, container))
             {
                 neededCount = storage.getAmount() * qty;
             }
@@ -366,6 +365,9 @@ public class RecipeStorage implements IRecipeStorage
 
         final RecipeStorage that = (RecipeStorage) o;
 
+        final Matcher primaryOutputMatcher = new Matcher.Builder(primaryOutput.getItem())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, primaryOutput.getTag())
+            .build();
         if (gridSize != that.gridSize
               || cleanedInput.size() != that.cleanedInput.size()
               || alternateOutputs.size() != that.alternateOutputs.size()
@@ -375,7 +377,7 @@ public class RecipeStorage implements IRecipeStorage
               || !Objects.equals(this.recipeSource, that.recipeSource)
               || !Objects.equals(this.lootTable, that.lootTable)
               || !this.recipeType.getId().equals(that.recipeType.getId())
-              || !ItemStackUtils.compareItemStacksIgnoreStackSize(primaryOutput, that.primaryOutput, false, true))
+              || !ItemStackUtils.compareItemStack(primaryOutputMatcher, that.primaryOutput))
         {
             return false;
         }
@@ -392,7 +394,11 @@ public class RecipeStorage implements IRecipeStorage
         {
             final ItemStack left = alternateOutputs.get(i);
             final ItemStack right = that.alternateOutputs.get(i);
-            if(!ItemStackUtils.compareItemStacksIgnoreStackSize(left, right, false, true) || left.getCount() != right.getCount())
+            final Matcher leftMatcher = new Matcher.Builder(left.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, left.getTag())
+                .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, left.getCount())
+                .build();
+            if(!ItemStackUtils.compareItemStack(leftMatcher, right))
             {
                 return false;
             }
@@ -402,7 +408,11 @@ public class RecipeStorage implements IRecipeStorage
         {
             final ItemStack left = secondaryOutputs.get(i);
             final ItemStack right = that.secondaryOutputs.get(i);
-            if (!ItemStackUtils.compareItemStacksIgnoreStackSize(left, right, false, true) || left.getCount() != right.getCount())
+            final Matcher leftMatcher = new Matcher.Builder(left.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, left.getTag())
+                .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, left.getCount())
+                .build();
+            if (!ItemStackUtils.compareItemStack(leftMatcher, right))
             {
                 return false;
             }
@@ -412,7 +422,11 @@ public class RecipeStorage implements IRecipeStorage
         {
             final ItemStack left = tools.get(i);
             final ItemStack right = that.tools.get(i);
-            if (!ItemStackUtils.compareItemStacksIgnoreStackSize(left, right, false, true) || left.getCount() != right.getCount())
+            final Matcher leftMatcher = new Matcher.Builder(left.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, left.getTag())
+                .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, left.getCount())
+                .build();
+            if (!ItemStackUtils.compareItemStack(leftMatcher, right))
             {
                 return false;
             }
@@ -456,14 +470,14 @@ public class RecipeStorage implements IRecipeStorage
     }
 
     /**
-     * Check for free space in the handlers.
+     * Check if the inventories will be able to hold the result of the craft.
      *
-     * @param handlers the handlers to check.
+     * @param inventories the inventories to check.
      * @return true if enough space.
      */
-    private boolean checkForFreeSpace(final List<IItemHandler> handlers)
+    private boolean checkForFreeSpace(final List<IInventory> inventories)
     {
-        final List<ItemStack> resultStacks = new ArrayList<>();
+        List<ItemStack> resultStacks = new ArrayList<>();
         //Calculate space needed by the secondary outputs, but only if there is a primary output.
         if(!secondaryOutputs.isEmpty() && !ItemStackUtils.isEmpty(getPrimaryOutput()))
         {
@@ -483,15 +497,9 @@ public class RecipeStorage implements IRecipeStorage
         }
         //Include the primary output in the space check
         resultStacks.add(getPrimaryOutput());
-        if (resultStacks.size() > getInput().size())
+        for (final IInventory inventory : inventories)
         {
-            int freeSpace = 0;
-            for (final IItemHandler handler : handlers)
-            {
-                freeSpace += handler.getSlots() - InventoryUtils.getAmountOfStacksInItemHandler(handler);
-            }
-
-            return freeSpace >= resultStacks.size() - getInput().size();
+            resultStacks = inventory.insert(resultStacks, true);
         }
         return true;
     }
@@ -504,9 +512,9 @@ public class RecipeStorage implements IRecipeStorage
      * @return copy of the crafted items if successful, null on failure
      */
     @Override
-    public List<ItemStack> fullfillRecipeAndCopy(final LootParams context, final List<IItemHandler> handlers, boolean doInsert)
+    public List<ItemStack> fullfillRecipeAndCopy(final LootParams context, final List<IInventory> inventories, boolean doInsert)
     {
-        if (!checkForFreeSpace(handlers) || !canFullFillRecipe(1, Collections.emptyMap(), handlers.toArray(new IItemHandler[0])))
+        if (!checkForFreeSpace(inventories) || !canFullFillRecipe(1, Collections.emptyMap(), inventories.toArray(new IInventory[0])))
         {
             return null;
         }
@@ -518,51 +526,47 @@ public class RecipeStorage implements IRecipeStorage
             final ItemStack stack = storage.getItemStack();
             int amountNeeded = storage.getAmount();
 
+            final Matcher.Builder builder = new Matcher.Builder(stack.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag());
+            if (!storage.ignoreNBT())
+            {
+                builder.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag());
+            }
+            final Matcher targetStackMatcher = builder.build();
+
             if (amountNeeded == 0)
             {
                 break;
             }
 
-            for (final IItemHandler handler : handlers)
+            for (final IInventory inventory : inventories)
             {
-                int slotOfStack =
-                  InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(handler, itemStack -> !ItemStackUtils.isEmpty(itemStack) && ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack, false, !storage.ignoreNBT()));
-
-                while (slotOfStack != -1 && amountNeeded > 0)
+                ItemStack matchingStack = inventory.findFirstMatch(targetStackMatcher);
+                final Matcher matchingStackMatcher = new Matcher.Builder(matchingStack.getItem()).build();
+                while (matchingStack != null && !matchingStack.isEmpty() && amountNeeded > 0)
                 {
-                    if(citizen != null && ItemStackUtils.compareItemStackListIgnoreStackSize(tools, stack, false, !storage.ignoreNBT()) && ItemStackUtils.getDurability(handler.getStackInSlot(slotOfStack)) > 0 )
+                    // Check the stack is the tool we need and it has durability left
+                    if (citizen != null && ItemStackUtils.compareItemStacks(tools, targetStackMatcher) && citizen.getInventory().hasUsableTool(stack))
                     {
-                        ItemStack toDamage = handler.extractItem(slotOfStack,1, false);
-                        if (!ItemStackUtils.isEmpty(toDamage))
-                        {
-                            // The 4 parameter inner call from forge is for adding a callback to alter the damage caused,
-                            // but unlike its description does not actually damage the item(despite the same function name). So used to just calculate the damage.
-                            toDamage.hurtAndBreak(toDamage.getItem().damageItem(stack, 1, citizen, item -> item.broadcastBreakEvent(InteractionHand.MAIN_HAND)), citizen, item -> item.broadcastBreakEvent(InteractionHand.MAIN_HAND));
-                        }
-                        if (!ItemStackUtils.isEmpty(toDamage))
-                        {
-                            handler.insertItem(slotOfStack, toDamage, false);
-                        }
+                        citizen.getInventory().damageTool(stack, 1);
                         amountNeeded -= stack.getCount();
                     }
                     else
                     {
-                        final int count = ItemStackUtils.getSize(handler.getStackInSlot(slotOfStack));
-                        final ItemStack extractedStack = handler.extractItem(slotOfStack, amountNeeded, false).copy();
+                        final List<ItemStack> extractedStacks = inventory.extractStacks(matchingStackMatcher, amountNeeded, ItemCountType.USE_COUNT_AS_MAXIMUM, false);
 
                         //This prevents the AI and for that matter the server from getting stuck in case of an emergency.
                         //Deletes some items, but hey.
-                        if (ItemStackUtils.isEmpty(extractedStack))
+                        if (extractedStacks.size() == 0 || extractedStacks.get(0).isEmpty())
                         {
-                            handler.insertItem(slotOfStack, extractedStack, false);
+                            inventory.insert(extractedStacks, false);
                             return null;
                         }
 
-                        amountNeeded -= count;
+                        amountNeeded -= extractedStacks.stream().mapToInt(ItemStack::getCount).sum();
                         if (amountNeeded > 0)
                         {
-                            slotOfStack = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(handler,
-                            itemStack -> !ItemStackUtils.isEmpty(itemStack) && ItemStackUtils.compareItemStacksIgnoreStackSize(itemStack, stack, false, !storage.ignoreNBT()));
+                            matchingStack = inventory.findFirstMatch(targetStackMatcher);
                         }
                     }
                 }
@@ -580,7 +584,7 @@ public class RecipeStorage implements IRecipeStorage
             }
         }
 
-        return insertCraftedItems(handlers, getPrimaryOutput(), context, doInsert);
+        return insertCraftedItems(inventories, getPrimaryOutput(), context, doInsert);
     }
 
     @Override
@@ -592,9 +596,9 @@ public class RecipeStorage implements IRecipeStorage
     /**
      * Inserted the resulting items into the itemHandlers.
      *
-     * @param handlers the handlers.
+     * @param inventories the inventories to insert into.
      */
-    private List<ItemStack> insertCraftedItems(final List<IItemHandler> handlers, ItemStack outputStack, LootParams context, boolean doInsert)
+    private List<ItemStack> insertCraftedItems(final List<IInventory> inventories, ItemStack outputStack, LootParams context, boolean doInsert)
     {
         final List<ItemStack> resultStacks = new ArrayList<>();
         final List<ItemStack> secondaryStacks = new ArrayList<>();
@@ -604,9 +608,11 @@ public class RecipeStorage implements IRecipeStorage
             resultStacks.add(outputStack.copy());
             if(doInsert)
             {
-                for (final IItemHandler handler : handlers)
+                ItemStack intermediateStack = outputStack.copy();
+                for (final IInventory inventory : inventories)
                 {
-                    if (InventoryUtils.addItemStackToItemHandler(handler, outputStack.copy()))
+                    intermediateStack = inventory.insert(intermediateStack, false);
+                    if (intermediateStack.isEmpty())
                     {
                         break;
                     }
@@ -630,9 +636,11 @@ public class RecipeStorage implements IRecipeStorage
         {
             for (final ItemStack stack : secondaryStacks)
             {
-                for (final IItemHandler handler : handlers)
+                ItemStack intermidateStack = stack.copy();
+                for (final IInventory inventory : inventories)
                 {
-                    if (InventoryUtils.addItemStackToItemHandler(handler, stack.copy()))
+                    intermidateStack = inventory.insert(intermidateStack, false);
+                    if (intermidateStack.isEmpty())
                     {
                         break;
                     }

@@ -7,8 +7,8 @@ import com.minecolonies.api.colony.requestsystem.manager.IRequestManager;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractAssignedCitizenModule;
 import com.minecolonies.core.colony.buildings.modules.WorkerBuildingModule;
@@ -106,6 +106,6 @@ public class StationRequestResolver extends BuildingRequestResolver
             return !requestParent.getRequestOfType(IDeliverable.class).map(d -> d.matches(itemStack)).orElse(false);
         };
 
-        return InventoryUtils.hasBuildingEnoughElseCount(building, pred, 1) > 0;
+        return building.countMatches(pred) > 0;
     }
 }

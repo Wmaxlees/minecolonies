@@ -11,10 +11,11 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.items.ModTags;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.SoundUtils;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.modules.FurnaceUserModule;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
@@ -130,9 +131,7 @@ public class EntityAIWorkSmelter extends AbstractEntityAIUsesFurnace<JobSmelter,
     @Override
     protected void extractFromFurnace(final FurnaceBlockEntity furnace)
     {
-        InventoryUtils.transferItemStackIntoNextFreeSlotInItemHandler(
-          new InvWrapper(furnace), RESULT_SLOT,
-          worker.getInventoryCitizen());
+        InventoryUtils.transfer(furnace, worker.getInventory(), RESULT_SLOT, 0, ItemCountType.IGNORE_COUNT);
         worker.getCitizenExperienceHandler().addExperience(BASE_XP_GAIN);
         this.incrementActionsDoneAndDecSaturation();
     }
@@ -151,7 +150,7 @@ public class EntityAIWorkSmelter extends AbstractEntityAIUsesFurnace<JobSmelter,
             worker.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         }
 
-        if (InventoryUtils.isItemHandlerFull(worker.getInventoryCitizen()))
+        if (worker.getInventory().isFull())
         {
             return INVENTORY_FULL;
         }

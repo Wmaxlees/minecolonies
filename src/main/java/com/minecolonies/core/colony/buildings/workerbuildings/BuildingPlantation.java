@@ -11,8 +11,10 @@ import com.minecolonies.api.crafting.IGenericRecipe;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.util.CraftingUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.OptionalPredicate;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.client.gui.modules.PlantationFieldsModuleWindow;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
@@ -178,6 +180,11 @@ public class BuildingPlantation extends AbstractBuilding
             return false;
         }
 
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+          .compareDamage(stack.getDamageValue())
+          .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+          .build();
+
         for (FieldsModule module : getModulesByType(FieldsModule.class))
         {
             for (final IField field : module.getOwnedFields())
@@ -185,7 +192,7 @@ public class BuildingPlantation extends AbstractBuilding
                 if (field instanceof PlantationField plantationField)
                 {
                     final IPlantationModule plantationModule = plantationField.getFirstModuleOccurance(IPlantationModule.class);
-                    if (ItemStackUtils.compareItemStacksIgnoreStackSize(new ItemStack(plantationModule.getItem()), stack))
+                    if (ItemStackUtils.compareItemStack(matcher, new ItemStack(plantationModule.getItem())))
                     {
                         return false;
                     }

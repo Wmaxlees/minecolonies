@@ -2,8 +2,8 @@ package com.minecolonies.core.datalistener;
 
 import com.google.gson.*;
 import com.minecolonies.api.items.CheckedNbtKey;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.generation.ItemNbtCalculator;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;

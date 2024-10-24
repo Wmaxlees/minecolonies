@@ -2,7 +2,7 @@ package com.minecolonies.core.colony.buildings.workerbuildings;
 
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Tuple;

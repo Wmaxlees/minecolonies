@@ -2,7 +2,7 @@ package com.minecolonies.core.compatibility.jei.transfer;
 
 import com.google.common.collect.ImmutableSet;
 import com.minecolonies.api.inventory.container.ContainerCrafting;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.server.TransferRecipeCraftingTeachingMessage;
 import mezz.jei.api.constants.RecipeTypes;

@@ -6,8 +6,9 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyView;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.NBTUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.client.gui.huts.WindowBarracksBuilding;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.views.AbstractBuildingView;
@@ -143,8 +144,11 @@ public class BuildingBarracks extends AbstractBuilding
         {
             if (!colony.getRaiderManager().areSpiesEnabled())
             {
-                if (InventoryUtils.tryRemoveStackFromItemHandler(this.getCapability(ForgeCapabilities.ITEM_HANDLER).orElseGet(null), new ItemStack(Items.GOLD_INGOT, SPIES_GOLD_COST)))
+                final Matcher goldMatcher = new Matcher.Builder(Items.GOLD_INGOT).build();
+                List<ItemStack> extractedGold = extractStacks(goldMatcher, SPIES_GOLD_COST, ItemCountType.MATCH_COUNT_EXACTLY, true);
+                if (!extractedGold.isEmpty() && extractedGold.stream().mapToInt(x -> x.getCount()).sum() == SPIES_GOLD_COST)
                 {
+                    extractStacks(goldMatcher, SPIES_GOLD_COST, ItemCountType.MATCH_COUNT_EXACTLY, false);
                     colony.getRaiderManager().setSpiesEnabled(true);
                     colony.markDirty();
                 }

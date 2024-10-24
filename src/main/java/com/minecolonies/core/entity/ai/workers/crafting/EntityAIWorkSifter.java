@@ -6,9 +6,11 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.items.ModTags;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingSifter;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -22,6 +24,8 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.network.chat.Component;
 
 import org.jetbrains.annotations.NotNull;
+
+import java.util.List;
 
 import static com.minecolonies.api.entity.ai.statemachine.states.AIWorkerState.*;
 import static com.minecolonies.api.util.constant.Constants.ONE_HUNDRED_PERCENT;
@@ -109,7 +113,7 @@ public class EntityAIWorkSifter extends AbstractEntityAICrafting<JobSifter, Buil
             return getState();
         }
 
-        if (InventoryUtils.isItemHandlerFull(worker.getInventoryCitizen()))
+        if (worker.getInventory().isFull())
         {
             return INVENTORY_FULL;
         }
@@ -122,9 +126,9 @@ public class EntityAIWorkSifter extends AbstractEntityAICrafting<JobSifter, Buil
 
         if (currentRecipeStorage == null)
         {
-            if (InventoryUtils.hasBuildingEnoughElseCount(sifterBuilding, i -> i.is(ModTags.meshes), 1) == 0)
+            if (!sifterBuilding.hasMatch(i -> i.is(ModTags.meshes)))
             {
-                if (InventoryUtils.getItemCountInProvider(worker, i -> i.is(ModTags.meshes)) > 0)
+                if (worker.getInventory().hasMatch(i -> i.is(ModTags.meshes)))
                 {
                     // We don't want the mesh in our inventory, we 'craft' out of the building
                     incrementActionsDone();
@@ -150,9 +154,12 @@ public class EntityAIWorkSifter extends AbstractEntityAICrafting<JobSifter, Buil
         }
 
         final ItemStack meshItem = currentRecipeStorage.getCraftingTools().get(0);
+        final Matcher meshMatcher = new Matcher.Builder(meshItem.getItem())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, meshItem.getTag())
+            .build();
         final ItemStack inputItem = currentRecipeStorage.getCleanedInput().stream()
                                       .map(ItemStorage::getItemStack)
-                                      .filter(item -> !ItemStackUtils.compareItemStacksIgnoreStackSize(item, meshItem, false, true))
+                                      .filter(item -> !ItemStackUtils.compareItemStack(meshMatcher, item))
                                       .findFirst().orElse(ItemStack.EMPTY);
 
         if (meshItem.isEmpty() || inputItem.isEmpty())
@@ -161,14 +168,17 @@ public class EntityAIWorkSifter extends AbstractEntityAICrafting<JobSifter, Buil
             return getState();
         }
 
-        if (!inputItem.isEmpty() && (ItemStackUtils.isEmpty(worker.getMainHandItem()) || ItemStackUtils.compareItemStacksIgnoreStackSize(worker.getMainHandItem(), inputItem)))
+        final Matcher inputMatcher = new Matcher.Builder(inputItem.getItem())
+            .compareDamage(inputItem.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, inputItem.getTag())
+            .build();
+        if (!inputItem.isEmpty() && (ItemStackUtils.isEmpty(worker.getMainHandItem()) || ItemStackUtils
+                .compareItemStack(inputMatcher, worker.getMainHandItem())))
         {
             worker.setItemInHand(InteractionHand.MAIN_HAND, inputItem);
         }
-        if (!meshItem.isEmpty() && (ItemStackUtils.isEmpty(worker.getOffhandItem()) || ItemStackUtils.compareItemStacksIgnoreStackSize(worker.getOffhandItem(),
-          meshItem,
-          false,
-          true)))
+        if (!meshItem.isEmpty() && (ItemStackUtils.isEmpty(worker.getOffhandItem())
+                || ItemStackUtils.compareItemStack(meshMatcher, worker.getOffhandItem())))
         {
             worker.setItemInHand(InteractionHand.OFF_HAND, meshItem);
         }
@@ -185,7 +195,7 @@ public class EntityAIWorkSifter extends AbstractEntityAICrafting<JobSifter, Buil
             {
                 incrementActionsDoneAndDecSaturation();
             }
-            if (!currentRecipeStorage.fullfillRecipe(getLootContext(), sifterBuilding.getHandlers()))
+            if (!currentRecipeStorage.fullfillRecipe(getLootContext(), List.of(sifterBuilding)))
             {
                 currentRecipeStorage = null;
                 return getState();

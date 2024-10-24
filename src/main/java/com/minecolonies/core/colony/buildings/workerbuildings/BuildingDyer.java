@@ -10,10 +10,12 @@ import com.minecolonies.api.colony.requestsystem.StandardFactoryController;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.*;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.util.CraftingUtils;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.OptionalPredicate;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import net.minecraft.core.BlockPos;
@@ -158,9 +160,13 @@ public class BuildingDyer extends AbstractBuilding
 
                 for(ItemStorage color : getWoolItems())
                 {
+                    final Matcher matcher = new Matcher.Builder(color.getItem())
+                      .compareDamage(color.getItemStack().getDamageValue())
+                      .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, color.getItemStack().getTag())
+                      .build();
                     for(IBuilding wareHouse: building.getColony().getBuildingManager().getWareHouses())
                     {
-                        final int colorCount = InventoryUtils.getCountFromBuilding(wareHouse, color);
+                        final int colorCount = wareHouse.countMatches(matcher);
                         inventoryCounts.put(color, inventoryCounts.getOrDefault(color, 0) + colorCount);
                     }
                 }
@@ -196,12 +202,7 @@ public class BuildingDyer extends AbstractBuilding
             IRecipeStorage recipe = super.getFirstFulfillableRecipe(stackPredicate, count, considerReservation);
             if (recipe == null && stackPredicate.test(new ItemStack(Items.WHITE_WOOL)))
             {
-                final Set<IItemHandler> handlers = new HashSet<>();
-                for (final ICitizenData workerEntity : building.getAllAssignedCitizen())
-                {
-                    handlers.add(workerEntity.getInventory());
-                }
-
+                final List<IInventory> inventories = building.getInventories();
                 for (ItemStorage color : getWoolItems())
                 {
                     IToken<?> token = getTokenForWool(color);
@@ -209,7 +210,7 @@ public class BuildingDyer extends AbstractBuilding
                     final IRecipeStorage storage = IColonyManager.getInstance().getRecipeManager().getRecipes().get(token);
 
                     IRecipeStorage toTest = storage.getRecipeType() instanceof MultiOutputRecipe ? storage.getClassicForMultiOutput(stackPredicate) : storage;
-                    if (toTest.canFullFillRecipe(count, considerReservation ? reservedStacks() : Collections.emptyMap(), new ArrayList<>(handlers), building))
+                    if (toTest.canFullFillRecipe(count, considerReservation ? reservedStacks() : Collections.emptyMap(), (IInventory[])inventories.toArray()))
                     {
                         return toTest;
                     }

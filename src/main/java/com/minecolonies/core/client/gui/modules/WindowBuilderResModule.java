@@ -9,9 +9,11 @@ import com.ldtteam.blockui.controls.Text;
 import com.ldtteam.blockui.views.ScrollingList;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.colony.workorders.IWorkOrderView;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.client.gui.AbstractModuleWindow;
 import com.minecolonies.core.colony.buildings.moduleviews.BuildingResourcesModuleView;
@@ -22,7 +24,6 @@ import com.minecolonies.core.network.messages.server.colony.building.TransferIte
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -98,9 +99,12 @@ public class WindowBuilderResModule extends AbstractModuleWindow
             }
             else
             {
+                final Matcher matcher = new Matcher.Builder(resource.getItem())
+                    .compareDamage(resource.getItemStack().getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, resource.getItemStack().getTag())
+                    .build();
                 amountToSet =
-                  InventoryUtils.getItemCountInItemHandler(new InvWrapper(inventory),
-                    stack -> !ItemStackUtils.isEmpty(stack) && ItemStackUtils.compareItemStacksIgnoreStackSize(stack, resource.getItemStack()));
+                  InventoryUtils.countInPlayersInventory(mc.player, matcher);
             }
             resource.setPlayerAmount(amountToSet);
             supplied += Math.min(resource.getAvailable(), resource.getAmount());

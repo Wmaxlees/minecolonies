@@ -17,6 +17,11 @@ import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.ExpeditionLogModule;
 import com.minecolonies.core.colony.buildings.modules.expedition.ExpeditionLog;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingNetherWorker;
@@ -133,9 +138,9 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                                                        || getState() == NETHER_OPENPORTAL
                                                        || getState() == NETHER_CLOSEPORTAL ? RENDER_META_WORKING : "");
 
-        for (int slot = 0; slot < worker.getInventoryCitizen().getSlots(); slot++)
+        for (final Map.Entry<ItemStack, Integer> stackAndCount : worker.getInventory().getAllItems().entrySet())
         {
-            final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(slot);
+            final ItemStack stack = stackAndCount.getKey();
             if (stack.getItem() == Items.TORCH && renderData.indexOf(RENDER_META_TORCH) == -1)
             {
                 renderData.append(RENDER_META_TORCH);
@@ -307,7 +312,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
             {
                 return getState();
             }
-            if (InventoryUtils.isItemHandlerFull(worker.getInventoryCitizen()))
+            if (worker.getInventory().isFull())
             {
                 return INVENTORY_FULL;
             }
@@ -334,7 +339,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
      */
     protected IAIState leaveForNether()
     {
-        if (InventoryUtils.isItemHandlerFull(worker.getInventoryCitizen()))
+        if (worker.getInventory().isFull())
         {
             return INVENTORY_FULL;
         }
@@ -387,7 +392,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                 expeditionLog.setStatus(ExpeditionLog.Status.IN_PROGRESS);
                 logAllEquipment(expeditionLog, false);
 
-                List<ItemStack> result = currentRecipeStorage.fullfillRecipeAndCopy(getLootContext(), ImmutableList.of(worker.getItemHandlerCitizen()), false);
+                List<ItemStack> result = currentRecipeStorage.fullfillRecipeAndCopy(getLootContext(), ImmutableList.of(worker.getInventory()), false);
                 if (result != null)
                 {
                     // by default all the adventure tokens are at the end (due to loot tables); space them better
@@ -530,7 +535,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                             expeditionLog.setKilled();
 
                             // Stop processing loot table data, as the worker died before finishing the trip.
-                            InventoryUtils.clearItemHandler(worker.getItemHandlerCitizen());
+                            worker.getInventory().clear();
                             job.getCraftedResults().clear();
                             job.getProcessedResults().clear();
                             return IDLE;
@@ -618,7 +623,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                 expeditionLog.setStatus(ExpeditionLog.Status.RETURNING_HOME);
                 ItemStack item = job.getProcessedResults().poll();
 
-                if (InventoryUtils.addItemStackToItemHandler(worker.getItemHandlerCitizen(), item))
+                if (!worker.getInventory().insert(item, false).isEmpty())
                 {
                     worker.decreaseSaturationForContinuousAction();
                     worker.getCitizenExperienceHandler().addExperience(0.2);
@@ -768,8 +773,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
 
     private ItemStack findItem(@NotNull final Predicate<ItemStack> predicate)
     {
-        int slotOfStack = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(worker.getItemHandlerCitizen(), predicate);
-        return slotOfStack < 0 ? ItemStack.EMPTY : worker.getInventoryCitizen().getStackInSlot(slotOfStack);
+        return worker.getInventory().findFirstMatch(predicate);
     }
 
     private ItemStack findTool(@NotNull final EquipmentTypeEntry tool)
@@ -779,8 +783,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
 
     private ItemStack findTool(@NotNull final BlockState target, final BlockPos pos)
     {
-        int slotOfStack = getMostEfficientTool(target, pos);
-        return slotOfStack < 0 ? ItemStack.EMPTY : worker.getInventoryCitizen().getStackInSlot(slotOfStack);
+        return getMostEfficientTool(target, pos);
     }
 
     /**
@@ -800,14 +803,17 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                     if (item.getType().equals(equipSlot)
                           && building.getBuildingLevel() >= item.getMinBuildingLevelRequired() && building.getBuildingLevel() <= item.getMaxBuildingLevelRequired())
                     {
-                        if (!item.test(worker.getInventoryCitizen().getArmorInSlot(item.getType())))
+                        if (!item.test(worker.getInventory().getArmorInSlot(item.getType())))
                         {
-                            final int toBeEquipped = InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(worker.getItemHandlerCitizen(), item);
-                            if (toBeEquipped > -1)
+                            final ItemStack armor = worker.getInventory().findFirstMatch(item);
+                            if (!armor.isEmpty())
                             {
-                                final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(toBeEquipped);
-                                worker.getInventoryCitizen().transferArmorToSlot(item.getType(), toBeEquipped);
-                                virtualEquipmentSlots.put(item.getType(), stack);
+                                final Matcher matcher = new Matcher.Builder(armor.getItem())
+                                    .compareDamage(armor.getDamageValue())
+                                    .compareNBT(ItemNBTMatcher.EXACT_MATCH, armor.getTag())
+                                    .build();
+                                worker.getInventory().equipArmor(item.getType(), matcher);
+                                virtualEquipmentSlots.put(item.getType(), armor);
                             }
                         }
                     }
@@ -816,7 +822,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
         }
         else
         {
-            worker.getInventoryCitizen().moveArmorToInventory(equipSlot);
+            worker.getInventory().moveArmorToInventory(equipSlot);
             virtualEquipmentSlots.put(equipSlot, ItemStack.EMPTY);
         }
     }
@@ -841,10 +847,10 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
         final List<ItemStack> equipment = new ArrayList<>();
         equipment.add(findTool(ModEquipmentTypes.sword.get()));
 
-        equipment.add(worker.getInventoryCitizen().getArmorInSlot(EquipmentSlot.HEAD));
-        equipment.add(worker.getInventoryCitizen().getArmorInSlot(EquipmentSlot.CHEST));
-        equipment.add(worker.getInventoryCitizen().getArmorInSlot(EquipmentSlot.LEGS));
-        equipment.add(worker.getInventoryCitizen().getArmorInSlot(EquipmentSlot.FEET));
+        equipment.add(worker.getInventory().getArmorInSlot(EquipmentSlot.HEAD));
+        equipment.add(worker.getInventory().getArmorInSlot(EquipmentSlot.CHEST));
+        equipment.add(worker.getInventory().getArmorInSlot(EquipmentSlot.LEGS));
+        equipment.add(worker.getInventory().getArmorInSlot(EquipmentSlot.FEET));
 
         equipment.add(findTool(ModEquipmentTypes.pickaxe.get()));
         equipment.add(findTool(ModEquipmentTypes.axe.get()));
@@ -874,10 +880,9 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
     protected void attemptToEat()
     {
         final IDeliverable edible = new StackList(getEdiblesList(), "Edible Food", 1);
-        final int slot = InventoryUtils.findFirstSlotInProviderNotEmptyWith(worker, edible::matches);
-        if (slot > -1)
+        final ItemStack stack = worker.getInventory().findFirstMatch(edible::matches);
+        if (!stack.isEmpty())
         {
-            final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(slot);
             ItemStackUtils.consumeFood(stack, worker, null);
         }
     }
@@ -897,9 +902,8 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                     continue;
                 }
 
-                int bestSlot = -1;
+                ItemStack bestItem = ItemStack.EMPTY;
                 int bestLevel = -1;
-                IItemHandler bestHandler = null;
 
                 if (virtualEquipmentSlots.containsKey(item.getType()) && !ItemStackUtils.isEmpty(virtualEquipmentSlots.get(item.getType())))
                 {
@@ -922,7 +926,7 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                     }
                 }
 
-                final Map<IItemHandler, List<Integer>> items = InventoryUtils.findAllSlotsInProviderWith(building, item::test);
+                final List<ItemStack> items = building.findMatches(item::test);
                 if (items.isEmpty())
                 {
                     // None found, check for equipped
@@ -935,44 +939,40 @@ public class EntityAIWorkNether extends AbstractEntityAICrafting<JobNetherWorker
                 else
                 {
                     // Compare levels
-                    for (Map.Entry<IItemHandler, List<Integer>> entry : items.entrySet())
+                    for (final ItemStack stack : items)
                     {
-                        for (final Integer slot : entry.getValue())
+                        if (ItemStackUtils.isEmpty(stack))
                         {
-                            final ItemStack stack = entry.getKey().getStackInSlot(slot);
-                            if (ItemStackUtils.isEmpty(stack))
-                            {
-                                continue;
-                            }
+                            continue;
+                        }
 
-                            int currentLevel = item.getItemNeeded().getMiningLevel(stack);
+                        int currentLevel = item.getItemNeeded().getMiningLevel(stack);
 
-                            if (currentLevel > bestLevel)
-                            {
-                                bestLevel = currentLevel;
-                                bestSlot = slot;
-                                bestHandler = entry.getKey();
-                            }
+                        if (currentLevel > bestLevel)
+                        {
+                            bestLevel = currentLevel;
+                            bestItem = stack;
                         }
                     }
                 }
 
                 // Transfer if needed
-                if (bestHandler != null)
+                if (!bestItem.isEmpty())
                 {
                     if (!ItemStackUtils.isEmpty(virtualEquipmentSlots.get(item.getType())))
                     {
-                        final int slot =
-                          InventoryUtils.findFirstSlotInItemHandlerNotEmptyWith(worker.getInventoryCitizen(), stack -> stack == virtualEquipmentSlots.get(item.getType()));
-                        if (slot > -1)
-                        {
-                            InventoryUtils.transferItemStackIntoNextFreeSlotInProvider(worker.getInventoryCitizen(), slot, building);
-                        }
+                        InventoryUtils.transfer(worker.getInventory(), building,
+                                stack -> stack == virtualEquipmentSlots.get(item.getType()), 1,
+                                ItemCountType.MATCH_COUNT_EXACTLY);
                     }
 
                     // Used for further comparisons, set to the right inventory slot afterwards
-                    virtualEquipmentSlots.put(item.getType(), bestHandler.getStackInSlot(bestSlot));
-                    InventoryUtils.transferItemStackIntoNextFreeSlotInItemHandler(bestHandler, bestSlot, worker.getInventoryCitizen());
+                    virtualEquipmentSlots.put(item.getType(), bestItem);
+                    final Matcher matcher = new Matcher.Builder(bestItem.getItem())
+                        .compareDamage(bestItem.getDamageValue())
+                        .compareNBT(ItemNBTMatcher.EXACT_MATCH, bestItem.getTag())
+                        .build();
+                    InventoryUtils.transfer(building, worker.getInventory(), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
                 }
             }
         }

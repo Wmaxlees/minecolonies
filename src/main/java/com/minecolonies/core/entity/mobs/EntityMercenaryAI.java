@@ -5,9 +5,12 @@ import com.minecolonies.api.entity.ai.statemachine.states.IState;
 import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.ITickRateStateMachine;
 import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickRateStateMachine;
 import com.minecolonies.api.entity.ai.statemachine.tickratestatemachine.TickingTransition;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import com.minecolonies.api.sounds.MercenarySounds;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.InteractionHand;
@@ -160,9 +163,9 @@ public class EntityMercenaryAI extends Goal
 
                 if (building != null)
                 {
-                    final List<IItemHandler> handlers = new ArrayList<>(InventoryUtils.getItemHandlersFromProvider(building.getTileEntity()));
-                    final IItemHandler handler = handlers.get(rand.nextInt(handlers.size()));
-                    final ItemStack stack = handler.extractItem(rand.nextInt(handler.getSlots()), 5, false);
+                    final List<IInventory> inventories = building.getInventories();
+                    final IInventory inventory = inventories.get(rand.nextInt(inventories.size()));
+                    final ItemStack stack = inventory.maybeExtractRandomStack(5);
 
                     if (!ItemStackUtils.isEmpty(stack))
                     {

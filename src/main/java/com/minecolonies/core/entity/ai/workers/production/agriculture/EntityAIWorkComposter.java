@@ -7,12 +7,12 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.AIBlockingEventType;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingComposter;
 import com.minecolonies.core.colony.jobs.JobComposter;
@@ -147,21 +147,15 @@ public class EntityAIWorkComposter extends AbstractEntityAIInteract<JobComposter
             return getState();
         }
 
-        if (InventoryUtils.hasItemInProvider(building, stack -> list.contains(new ItemStorage(stack))))
+        if (building.hasMatch(stack -> list.contains(new ItemStorage(stack))))
         {
-            InventoryUtils.transferItemStackIntoNextFreeSlotFromProvider(
-              building,
-              InventoryUtils.findFirstSlotInProviderNotEmptyWith(building, stack -> list.contains(new ItemStorage(stack))),
-              worker.getInventoryCitizen());
+            InventoryUtils.transfer(building, worker.getInventory(), stack -> list.contains(new ItemStorage(stack)), 0, ItemCountType.IGNORE_COUNT);
         }
 
-        final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(
-          worker.getInventoryCitizen(),
-          stack -> list.contains(new ItemStorage(stack))
-        );
-        if (slot >= 0)
+        final ItemStack match = worker.getInventory().findFirstMatch(stack -> list.contains(new ItemStorage(stack)));
+        if (!match.isEmpty())
         {
-            worker.setItemInHand(InteractionHand.MAIN_HAND, worker.getInventoryCitizen().getStackInSlot(slot));
+            worker.setItemInHand(InteractionHand.MAIN_HAND, match);
             return START_WORKING;
         }
 
@@ -250,13 +244,11 @@ public class EntityAIWorkComposter extends AbstractEntityAIInteract<JobComposter
 
         if (worker.getItemInHand(InteractionHand.MAIN_HAND) == ItemStack.EMPTY)
         {
-            final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(
-              worker.getInventoryCitizen(),
-              stack -> building.getModuleMatching(ItemListModule.class, m -> m.getId().equals(COMPOSTABLE_LIST)).isItemInList(new ItemStorage(stack)));
-
-            if (slot >= 0)
+            ItemListModule compostables = building.getModuleMatching(ItemListModule.class, m -> m.getId().equals(COMPOSTABLE_LIST));
+            final ItemStack match = worker.getInventory().findFirstMatch(stack -> compostables.isItemInList(new ItemStorage(stack)));
+            if (!match.isEmpty())
             {
-                worker.setItemInHand(InteractionHand.MAIN_HAND, worker.getInventoryCitizen().getStackInSlot(slot));
+                worker.setItemInHand(InteractionHand.MAIN_HAND, match);
             }
             else
             {
@@ -278,7 +270,7 @@ public class EntityAIWorkComposter extends AbstractEntityAIInteract<JobComposter
             barrel.addItem(worker.getItemInHand(InteractionHand.MAIN_HAND));
             worker.getCitizenExperienceHandler().addExperience(BASE_XP_GAIN);
             this.incrementActionsDoneAndDecSaturation();
-            worker.setItemInHand(InteractionHand.MAIN_HAND, ItemStackUtils.EMPTY);
+            worker.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
 
             incrementActionsDone();
         }
@@ -320,16 +312,16 @@ public class EntityAIWorkComposter extends AbstractEntityAIInteract<JobComposter
                                                                            .getResearchEffects()
                                                                            .getEffectStrength(PODZOL_CHANCE))))
                 {
-                    InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), new ItemStack(Blocks.PODZOL, 1));
+                    worker.getInventory().insert(new ItemStack(Blocks.PODZOL, 1), false);
                 }
                 else
                 {
-                    InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), new ItemStack(Blocks.DIRT, 1));
+                    worker.getInventory().insert(new ItemStack(Blocks.DIRT, 1), false);
                 }
             }
             else
             {
-                InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), compost);
+                worker.getInventory().insert(compost, false);
             }
 
             worker.getCitizenExperienceHandler().addExperience(BASE_XP_GAIN);

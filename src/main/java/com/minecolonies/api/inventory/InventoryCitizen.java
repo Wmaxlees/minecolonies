@@ -1,25 +1,38 @@
 package com.minecolonies.api.inventory;
 
 import com.google.common.collect.Iterables;
+import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.ICitizenData;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
+import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
+import com.minecolonies.api.inventory.events.AbstractInventoryEvent;
+import com.minecolonies.api.util.inventory.ItemHandlerUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.Nameable;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 import static com.minecolonies.api.research.util.ResearchConstants.CITIZEN_INV_SLOTS;
 import static com.minecolonies.api.util.constant.NbtTagConstants.*;
@@ -27,7 +40,7 @@ import static com.minecolonies.api.util.constant.NbtTagConstants.*;
 /**
  * Basic inventory for the citizens.
  */
-public class InventoryCitizen implements IItemHandlerModifiable, Nameable
+public class InventoryCitizen extends InventoryItemHandler implements IItemHandlerModifiable, Nameable
 {
     /**
      * The returned slot if a slot hasn't been found.
@@ -129,14 +142,40 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
      * @param hand the hand it is held in.
      * @param slot Slot index with item to be held by citizen.
      */
-    public void setHeldItem(final InteractionHand hand, final int slot)
+    public boolean setHeldItem(final InteractionHand hand, final int slot)
     {
+        if (slot == -1)
+        {
+            return false;
+        }
+
         if (hand.equals(InteractionHand.MAIN_HAND))
         {
             this.mainItem = slot;
+            if (citizen != null)
+            {
+                citizen.getEntity().ifPresent(citizen -> citizen.setItemSlot(EquipmentSlot.MAINHAND, getStackInSlot(slot)));
+            }
+            return true;
         }
 
         this.offhandItem = slot;
+        if (citizen != null)
+        {
+            citizen.getEntity().ifPresent(citizen -> citizen.setItemSlot(EquipmentSlot.OFFHAND, getStackInSlot(slot)));
+        }
+        return true;
+    }
+
+    public boolean setHeldItem(InteractionHand hand, Item target)
+    {
+        final Matcher matcher = new Matcher.Builder(target).build();
+        return setHeldItem(hand, ItemHandlerUtils.findFirstSlotMatching(this, matcher::match));
+    }
+
+    public boolean setHeldItem(InteractionHand hand, Predicate<ItemStack> target)
+    {
+        return setHeldItem(hand, ItemHandlerUtils.findFirstSlotMatching(this, target));
     }
 
     /**
@@ -162,20 +201,11 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
     }
 
     /**
-     * Checks if the inventory has space
-     *
-     * @return true if the main inventory (without armor slots) has an empty slot.
-     */
-    public boolean hasSpace()
-    {
-        return freeSlots > 0;
-    }
-
-    /**
      * Checks if the inventory is completely empty.
      *
      * @return true if the main inventory (without armor slots) is completely empty.
      */
+    @Override
     public boolean isEmpty()
     {
         return freeSlots == mainInventory.size();
@@ -186,6 +216,7 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
      *
      * @return true if the main inventory (without armor slots) is completely full.
      */
+    @Override
     public boolean isFull()
     {
         return freeSlots == 0;
@@ -340,7 +371,7 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
         if (equipmentSlot.isArmor())
         {
             final ItemStack armorStack = armorInventory.get(equipmentSlot.getIndex());
-            if (InventoryUtils.addItemStackToItemHandler(this, armorStack))
+            if (ItemHandlerUtils.insert(this, armorStack, false).isEmpty())
             {
                 markDirty();
                 armorInventory.set(equipmentSlot.getIndex(), ItemStack.EMPTY);
@@ -376,6 +407,11 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
         return ItemStackUtils.isEmpty(stack);
     }
 
+    public void damageItemInHand(final InteractionHand hand, final int amount)
+    {
+        damageInventoryItem(getHeldItemSlot(hand), amount, citizen.getEntity().orElse(null), null);
+    }
+
     /**
      * Shrinks an item in the given slot
      *
@@ -407,9 +443,15 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             return stack;
         }
 
+        final Entity entity = citizen.getEntity().orElse(null);
+        final int entityId = entity == null ? 0 : entity.getId();
         final ItemStack copy = stack.copy();
         final ItemStack inSlot = mainInventory.get(slot);
-        if (inSlot.getCount() >= inSlot.getMaxStackSize() || (!inSlot.isEmpty() && !ItemStackUtils.compareItemStacksIgnoreStackSize(inSlot, copy)))
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.EXACT_MATCH, stack.getTag())
+            .build();
+        if (inSlot.getCount() >= inSlot.getMaxStackSize() || (!inSlot.isEmpty() && !matcher.match(inSlot)))
         {
             return copy;
         }
@@ -421,12 +463,10 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
                 markDirty();
                 freeSlots--;
                 mainInventory.set(slot, copy);
-                return ItemStack.EMPTY;
+                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
+                        AbstractInventoryEvent.UpdateType.ADD, entityId);
             }
-            else
-            {
-                return ItemStack.EMPTY;
-            }
+            return ItemStack.EMPTY;
         }
 
         final int avail = inSlot.getMaxStackSize() - inSlot.getCount();
@@ -436,6 +476,8 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             {
                 markDirty();
                 inSlot.setCount(inSlot.getCount() + copy.getCount());
+                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
+                        AbstractInventoryEvent.UpdateType.ADD, entityId);
             }
             return ItemStack.EMPTY;
         }
@@ -445,6 +487,8 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
             {
                 markDirty();
                 inSlot.setCount(inSlot.getCount() + avail);
+                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot.copyWithCount(avail),
+                        AbstractInventoryEvent.UpdateType.ADD, entityId);
             }
             copy.setCount(copy.getCount() - avail);
             return copy;
@@ -467,6 +511,13 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
                 markDirty();
                 freeSlots++;
                 mainInventory.set(slot, ItemStack.EMPTY);
+                if (citizen != null && citizen.getEntity().isPresent())
+                {
+                    final Entity entity = citizen.getEntity().orElse(null);
+                    final int entityId = entity == null ? 0 : entity.getId();
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot,
+                            AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+                }
             }
             return inSlot;
         }
@@ -483,6 +534,13 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
                 {
                     freeSlots++;
                 }
+                if (citizen != null && citizen.getEntity().isPresent())
+                {
+                    final Entity entity = citizen.getEntity().orElse(null);
+                    final int entityId = entity == null ? 0 : entity.getId();
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot.copyWithCount(amount),
+                            AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+                }  
             }
             return copy;
         }
@@ -599,6 +657,13 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
                     {
                         this.mainInventory.set(j, itemstack);
                         freeSlots--;
+                        if (citizen != null && citizen.getEntity().isPresent())
+                        {
+                            final Entity entity = citizen.getEntity().get();
+                            final int entityId = entity == null ? 0 : entity.getId();
+                            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(itemstack,
+                                    AbstractInventoryEvent.UpdateType.ADD, entityId);
+                        }
                     }
                 }
             }
@@ -653,19 +718,30 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
     @Override
     public void setStackInSlot(final int slot, @Nonnull final ItemStack stack)
     {
+        final ItemStack originalStack = mainInventory.get(slot);
         if (!ItemStackUtils.isEmpty(stack))
         {
-            if (ItemStackUtils.isEmpty(mainInventory.get(slot)))
+            if (ItemStackUtils.isEmpty(originalStack))
             {
                 freeSlots--;
             }
         }
-        else if (!ItemStackUtils.isEmpty(mainInventory.get(slot)))
+        else if (!ItemStackUtils.isEmpty(originalStack))
         {
             freeSlots++;
         }
 
         mainInventory.set(slot, stack);
+
+        if (citizen != null && citizen.getEntity().isPresent())
+        {
+            final Entity entity = citizen.getEntity().get();
+            final int entityId = entity == null ? 0 : entity.getId();
+            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
+                    AbstractInventoryEvent.UpdateType.ADD, entityId);
+            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(originalStack,
+                    AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+        }
     }
 
     /**
@@ -675,5 +751,136 @@ public class InventoryCitizen implements IItemHandlerModifiable, Nameable
     public Iterable<ItemStack> getIterableArmorAndHandInv()
     {
         return Iterables.concat(armorInventory, List.of(getStackInSlot(mainItem), getStackInSlot(offhandItem)));
+    }
+
+    @Override
+    public IItemHandler getItemHandler()
+    {
+        return this;
+    }
+
+    /**
+     * Check if the inventory has a tool that matches the given stack
+     * and the durability is not 0.
+     * 
+     * @param stack The stack to compare against
+     * @return true if the inventory has a usable tool
+     */
+    public boolean hasUsableTool(ItemStack stack)
+    {
+        final Matcher matcher = new Matcher.Builder(stack.getItem()).build();
+        ItemStack result = findFirstMatch(compareStack -> matcher.match(compareStack) && ItemStackUtils.getDurability(compareStack) > 0);
+
+        return result != null && result != ItemStack.EMPTY;
+    }
+
+    /**
+     * Damage an item within the inventory.
+     * 
+     * @param stack The stack use to find the item to damage
+     * @param damageAmount The amount of damage to apply
+     * @return the remaining damage, -1 if the operation failed
+     */
+    public int damageTool(ItemStack stack, int damageAmount)
+    {
+        IItemHandler handler = getItemHandler();
+        final Matcher matcher = new Matcher.Builder(stack.getItem()).build();
+        int slot = ItemHandlerUtils.findFirstSlotMatching(handler, compareStack -> matcher.match(compareStack) && ItemStackUtils.getDurability(compareStack) > 0);
+        ItemStack toDamage = handler.extractItem(slot, 1, false);
+        if (ItemStackUtils.isEmpty(toDamage))
+        {
+            return -1;
+        }
+
+        AbstractEntityCitizen entity = citizen.getEntity().get();
+
+        // The 4 parameter inner call from forge is for adding a callback to alter the damage caused,
+        // but unlike its description does not actually damage the item(despite the same function name). So used to just calculate the damage.
+        toDamage.hurtAndBreak(toDamage.getItem().damageItem(toDamage, damageAmount, entity, item -> item.broadcastBreakEvent(InteractionHand.MAIN_HAND)), entity, item -> item.broadcastBreakEvent(InteractionHand.MAIN_HAND));
+        if (!ItemStackUtils.isEmpty(toDamage))
+        {
+            handler.insertItem(slot, toDamage, false);
+        }
+
+        return ItemStackUtils.getDurability(toDamage);
+    }
+
+    public boolean equipTool(InteractionHand hand, @NotNull EquipmentTypeEntry equipmentType, @NonNls int minimumLevel, int maximumLevel)
+    {
+        final int toolSlot = ItemHandlerUtils.findFirstMatchingSlotOfEquipment(this, equipmentType, minimumLevel, maximumLevel);
+        if (toolSlot == -1)
+        {
+            return false;
+        }
+
+        return setHeldItem(hand, toolSlot);
+    }
+
+    public boolean equipTool(InteractionHand hand, Predicate<ItemStack> predicate)
+    {
+        final int toolSlot = ItemHandlerUtils.findFirstNonEmptySlotMatching(getItemHandler(), predicate);
+        if (toolSlot == -1)
+        {
+            return false;
+        }
+
+        return setHeldItem(hand, toolSlot);
+    }
+
+    public boolean hasMatch(EquipmentTypeEntry toolType, int minLevel, int maxLevel)
+    {
+        return ItemHandlerUtils.hasEquipmentWithLevel(this, toolType, minLevel, maxLevel);
+    }
+
+    public ItemStack findFirstMatch(final @NotNull EquipmentTypeEntry equipmentTypeEntry, final int minLevel,
+            final int maxLevel)
+    {
+        int slot = ItemHandlerUtils.findFirstMatchingSlotOfEquipment(getItemHandler(), equipmentTypeEntry, minLevel, maxLevel);
+        if (slot == -1)
+        {
+            return ItemStack.EMPTY;
+        }
+
+        return getStackInSlot(slot);
+    }
+
+    public void equipArmor(final EquipmentSlot slot, final Matcher matcher)
+    {
+        final int armorSlot = ItemHandlerUtils.findFirstSlotMatching(this, matcher::match);
+        if (armorSlot != -1)
+        {
+            transferArmorToSlot(slot, armorSlot);
+        }
+    }
+
+    public boolean hasTool(@NotNull EquipmentTypeEntry toolType, int minimalLevel, int maxToolLevel)
+    {
+        return ItemHandlerUtils.hasEquipmentWithLevel(getItemHandler(), toolType, minimalLevel, maxToolLevel);
+    }
+
+    public long countOpenSlots()
+    {
+        return ItemHandlerUtils.countOpenSlots(getItemHandler());
+    }
+
+    @Override
+    public BlockPos getPos()
+    {
+        return null;
+    }
+
+    public void removeHeldItem(InteractionHand hand)
+    {
+        if (hand.equals(InteractionHand.MAIN_HAND))
+        {
+            this.mainItem = -1;
+            setStackInSlot(EquipmentSlot.MAINHAND.getIndex(), ItemStack.EMPTY);
+            citizen.getEntity().ifPresent(citizen -> citizen.markEquipmentDirty());
+            return;
+        }
+
+        this.offhandItem = -1;
+        setStackInSlot(EquipmentSlot.OFFHAND.getIndex(), ItemStack.EMPTY);
+        citizen.getEntity().ifPresent(citizen -> citizen.markEquipmentDirty());
     }
 }

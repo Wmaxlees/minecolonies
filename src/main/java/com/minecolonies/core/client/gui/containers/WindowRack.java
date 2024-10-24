@@ -72,16 +72,20 @@ public class WindowRack extends AbstractContainerScreen<ContainerRack>
         {
             if (container.rack.getBlockState().getValue(AbstractBlockMinecoloniesRack.VARIANT) != RackType.NO_RENDER)
             {
-                this.jointChestInventory = new CombinedInvWrapper(container.rack.getInventory(), container.neighborRack.getInventory());
+                this.jointChestInventory = new CombinedInvWrapper(
+                        container.rack.getItemHandler(),
+                        container.neighborRack.getItemHandler());
             }
             else
             {
-                this.jointChestInventory = new CombinedInvWrapper(container.neighborRack.getInventory(), container.rack.getInventory());
+                this.jointChestInventory = new CombinedInvWrapper(
+                        container.neighborRack.getItemHandler(),
+                        container.rack.getItemHandler());
             }
         }
         else
         {
-            this.jointChestInventory = container.rack.getInventory();
+            this.jointChestInventory = container.rack.getItemHandler();
         }
 
         final int size = jointChestInventory.getSlots();

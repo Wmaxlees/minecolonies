@@ -8,14 +8,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nonnull;
 import java.util.List;
 
-public interface IBuildingContainer extends ISchematicProvider, ICapabilityProvider
+public interface IBuildingContainer extends ISchematicProvider
 {
     @Override
     void deserializeNBT(CompoundTag compound);
@@ -90,8 +89,4 @@ public interface IBuildingContainer extends ISchematicProvider, ICapabilityProvi
      * @param te The tileentity
      */
     void setTileEntity(AbstractTileEntityColonyBuilding te);
-
-    @Nonnull
-    @Override
-    <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, final Direction direction);
 }

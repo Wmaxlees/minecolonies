@@ -2,7 +2,8 @@ package com.minecolonies.core.network.messages.server.colony.building.warehouse;
 
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingWareHouse;
 import com.minecolonies.core.network.messages.server.AbstractBuildingServerMessage;
 import net.minecraft.world.level.block.Blocks;
@@ -56,10 +57,7 @@ public class UpgradeWarehouseMessage extends AbstractBuildingServerMessage<Build
         final boolean isCreative = player.isCreative();
         if (!isCreative)
         {
-            final int slot = InventoryUtils.
-                                             findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()),
-                                               itemStack -> ItemStack.isSameItem(itemStack, new ItemStack(Blocks.EMERALD_BLOCK)));
-            player.getInventory().removeItem(slot, 1);
+            InventoryUtils.extractItemFromPlayerInventory(player, itemStack -> ItemStack.isSameItem(itemStack, new ItemStack(Blocks.EMERALD_BLOCK)), 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
         }
     }
 }

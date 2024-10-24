@@ -7,9 +7,9 @@ import com.minecolonies.api.colony.buildings.ModBuildings;
 import com.minecolonies.api.colony.buildings.registry.BuildingEntry;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.colony.permissions.Action;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.server.GetColonyInfoMessage;
@@ -132,7 +132,7 @@ public class BlockHutTownHall extends AbstractBlockHut<BlockHutTownHall>
     public List<MutableComponent> getRequirements(final ClientLevel level, final BlockPos pos, final LocalPlayer player)
     {
         final List<MutableComponent> requirements = new ArrayList<>();
-        if (InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()), this) == -1)
+        if (InventoryUtils.doesPlayerHave(player, this))
         {
             requirements.add(Component.translatable("com.minecolonies.coremod.hut.cost", Component.translatable("block." + Constants.MOD_ID + "." + getHutName())).setStyle((Style.EMPTY).withColor(
               ChatFormatting.RED)));

@@ -5,10 +5,11 @@ import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.ColonyConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AnimalHerdingModule;
 import com.minecolonies.core.colony.jobs.AbstractJob;
@@ -215,9 +216,14 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
                 }
             }
 
-            final boolean hasBreedingItem =
-              InventoryUtils.getItemCountInItemHandler((worker.getInventoryCitizen()),
-                (ItemStack stack) -> ItemStackUtils.compareItemStackListIgnoreStackSize(module.getBreedingItems(), stack)) > 1;
+            final boolean hasBreedingItem = worker.getInventory().hasMatch(
+                (ItemStack stack) -> {
+                    final Matcher matcher = new Matcher.Builder(stack.getItem())
+                        .compareDamage(stack.getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+                        .build();
+                    return ItemStackUtils.compareItemStacks(module.getBreedingItems(), matcher);
+                });
 
             if (ColonyConstants.rand.nextDouble() < 0.1 && !searchForItemsInArea().isEmpty())
             {
@@ -410,7 +416,7 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
     {
         if (current_module == null)
         {
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
             return DECIDE;
         }
 
@@ -424,7 +430,7 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
 
         if (breedables.size() < 2)
         {
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
             breedTimeOut = TICKS_SECOND * 60;
             return DECIDE;
         }
@@ -448,14 +454,14 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
 
         if (animalTwo == null)
         {
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
             breedTimeOut = TICKS_SECOND * 20;
             return DECIDE;
         }
 
         if (!equipItem(InteractionHand.MAIN_HAND, current_module.getBreedingItems()))
         {
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
             return START_WORKING;
         }
 
@@ -469,7 +475,7 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
         }
 
         breedTimeOut = TICKS_SECOND * 60;
-        worker.getCitizenItemHandler().removeHeldItem();
+        worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
         return IDLE;
     }
 
@@ -547,7 +553,7 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
             worker.getCitizenExperienceHandler().addExperience(XP_PER_ACTION);
             worker.level.broadcastEntityEvent(toFeed, (byte) 18);
             toFeed.playSound(SoundEvents.GENERIC_EAT, 1.0F, 1.0F);
-            worker.getCitizenItemHandler().removeHeldItem();
+            worker.getInventory().removeHeldItem(InteractionHand.MAIN_HAND);
             fedRecently.put(toFeed.getUUID(), worker.level.getGameTime());
 
             return DECIDE;
@@ -692,30 +698,14 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
      */
     public boolean equipTool(final InteractionHand hand, final EquipmentTypeEntry toolType)
     {
-        if (getToolSlot(toolType) != -1)
-        {
-            worker.getCitizenItemHandler().setHeldItem(hand, getToolSlot(toolType));
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Gets the slot in which the Tool is in.
-     *
-     * @param toolType this herders tool type.
-     * @return slot number.
-     */
-    private int getToolSlot(final EquipmentTypeEntry toolType)
-    {
-        final int slot = InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), toolType,
-          TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
-
-        if (slot == -1)
+        boolean result = worker.getInventory().equipTool(hand, toolType, TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
+        
+        if (!result)
         {
             checkForToolOrWeapon(toolType);
         }
-        return slot;
+
+        return result;
     }
 
     /**
@@ -731,23 +721,12 @@ public abstract class AbstractEntityAIHerder<J extends AbstractJob<?, J>, B exte
         {
             if (checkIfRequestForItemExistOrCreateAsync(itemStack))
             {
-                worker.getCitizenItemHandler().setHeldItem(hand, getItemSlot(itemStack.getItem()));
+                worker.getInventory().setHeldItem(hand, itemStack.getItem());
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * Gets the slot in which the inserted item is in. (if any).
-     *
-     * @param item The {@link Item} to check for.
-     * @return slot number -1 if not in INV.
-     */
-    public int getItemSlot(final Item item)
-    {
-        return InventoryUtils.findFirstSlotInItemHandlerWith(getInventory(), item);
     }
 
     /**

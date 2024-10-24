@@ -7,8 +7,10 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.BuildingModules;
 import com.minecolonies.core.colony.buildings.modules.BuildingResourcesModule;
 import com.minecolonies.core.colony.buildings.modules.WorkerBuildingModule;
@@ -178,23 +180,15 @@ public abstract class AbstractBuildingStructureBuilder extends AbstractBuilding
 
         for (final BuildingBuilderResource stack : getModule(BuildingModules.BUILDING_RESOURCES).getNeededResources().values())
         {
-            toKeep.put(itemstack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack.getItemStack(), itemstack),
+            final Matcher matcher = new Matcher.Builder(stack.getItem())
+                .compareDamage(stack.getItemStack().getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getItemStack().getTag())
+                .build();
+            toKeep.put(itemstack -> ItemStackUtils.compareItemStack(matcher, itemstack),
               new net.minecraft.util.Tuple<>(stack.getAmount(), true));
         }
 
         return toKeep;
-    }
-
-    @Override
-    public ItemStack forceTransferStack(final ItemStack stack, final Level world)
-    {
-        final ItemStack itemStack = super.forceTransferStack(stack, world);
-        if (ItemStackUtils.isEmpty(itemStack))
-        {
-            this.markDirty();
-        }
-
-        return itemStack;
     }
 
     @Override

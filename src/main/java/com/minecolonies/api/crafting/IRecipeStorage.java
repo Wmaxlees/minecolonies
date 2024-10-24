@@ -3,6 +3,7 @@ package com.minecolonies.api.crafting;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
+import com.minecolonies.api.inventory.IInventory;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -10,7 +11,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
-import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -69,26 +69,14 @@ public interface IRecipeStorage
      * @param inventories the inventories to check.
      * @return true if possible, else false.
      */
-    boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final IItemHandler... inventories);
+    boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final IInventory... inventories);
 
-    /**
-     * Method to check if with the help of inventories this recipe can be fulfilled.
-     * Also check if the inventory has enough to fulfill the existing requirements.
-     *
-     * @param qty         the quantity to craft.
-     * @param existingRequirements map of existing requirements (pending requests).
-     * @param citizen the citizen inventory to check.
-     * @param building the building inv to check.
-     * @return true if possible, else false.
-     */
-    boolean canFullFillRecipe(final int qty, final Map<ItemStorage, Integer> existingRequirements, @NotNull final List<IItemHandler> citizen, @NotNull final IBuilding building);
-
-    default boolean fullFillRecipe(@NotNull final Level world, @NotNull final IItemHandler... inventories)
+    default boolean fullFillRecipe(@NotNull final Level world, @NotNull final IInventory... inventories)
     {
         return fullfillRecipe(world, Arrays.asList(inventories));
     }
 
-    default boolean fullFillRecipe(@NotNull final LootParams context, @NotNull final IItemHandler... inventories)
+    default boolean fullFillRecipe(@NotNull final LootParams context, @NotNull final IInventory... inventories)
     {
         return fullfillRecipe(context, Arrays.asList(inventories));
     }
@@ -99,7 +87,7 @@ public interface IRecipeStorage
      * @param handlers the handlers to use.
      * @return true if successful.
      */
-    default boolean fullfillRecipe(final LootParams context, final List<IItemHandler> handlers)
+    default boolean fullfillRecipe(final LootParams context, final List<IInventory> handlers)
     {
         return fullfillRecipeAndCopy(context, handlers, true) != null;
     }
@@ -110,7 +98,7 @@ public interface IRecipeStorage
      * @param handlers the handlers to use.
      * @return true if successful.
      */
-    default boolean fullfillRecipe(final Level world, final List<IItemHandler> handlers)
+    default boolean fullfillRecipe(final Level world, final List<IInventory> handlers)
     {
         return fullfillRecipeAndCopy(world, handlers, true) != null;
     }
@@ -123,7 +111,7 @@ public interface IRecipeStorage
      * @return copy of the crafted items if successful, null on failure
      */
     @Nullable
-    List<ItemStack> fullfillRecipeAndCopy(final LootParams context, final List<IItemHandler> handlers, boolean doInsert);
+    List<ItemStack> fullfillRecipeAndCopy(final LootParams context, final List<IInventory> handlers, boolean doInsert);
 
     /**
      * Check for space, remove items, and insert crafted items.
@@ -132,7 +120,7 @@ public interface IRecipeStorage
      * @return true if successful.
      */
     @Nullable
-    default List<ItemStack> fullfillRecipeAndCopy(final Level world, final List<IItemHandler> handlers, boolean doInsert)
+    default List<ItemStack> fullfillRecipeAndCopy(final Level world, final List<IInventory> handlers, boolean doInsert)
     {
         return fullfillRecipeAndCopy((new LootParams.Builder((ServerLevel) world)).create(LootContextParamSets.EMPTY), handlers, doInsert);
     }

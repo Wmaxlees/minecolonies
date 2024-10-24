@@ -11,7 +11,7 @@ import com.minecolonies.api.colony.buildings.modules.ITickingModule;
 import com.minecolonies.api.colony.guardtype.GuardType;
 import com.minecolonies.api.colony.jobs.ModJobs;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.util.AttributeModifierUtils;
 import com.minecolonies.core.util.BuildingUtils;
@@ -56,10 +56,10 @@ public class GuardBuildingModule extends WorkAtHomeBuildingModule implements IBu
             cit.setItemSlot(EquipmentSlot.MAINHAND, ItemStackUtils.EMPTY);
             cit.setItemSlot(EquipmentSlot.OFFHAND, ItemStackUtils.EMPTY);
 
-            cit.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.CHEST);
-            cit.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.LEGS);
-            cit.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.HEAD);
-            cit.getInventoryCitizen().moveArmorToInventory(EquipmentSlot.FEET);
+            cit.getInventory().moveArmorToInventory(EquipmentSlot.CHEST);
+            cit.getInventory().moveArmorToInventory(EquipmentSlot.LEGS);
+            cit.getInventory().moveArmorToInventory(EquipmentSlot.HEAD);
+            cit.getInventory().moveArmorToInventory(EquipmentSlot.FEET);
         });
     }
 

@@ -13,10 +13,13 @@ import com.minecolonies.api.crafting.*;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.research.IGlobalResearchTree;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
@@ -774,13 +777,16 @@ public class CustomRecipe
         {
             final IRecipeStorage compareStorage = this.getRecipeStorage();
             final ResourceLocation recipeSource = this.getRecipeId();
+            final Matcher matcher = new Matcher.Builder(compareStorage.getPrimaryOutput().getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, compareStorage.getPrimaryOutput().getTag())
+                .build();
             for (final ICraftingBuildingModule module : building.getModulesByType(ICraftingBuildingModule.class))
             {
                 for (IToken<?> recipeToken : module.getRecipes())
                 {
                     final IRecipeStorage storage = IColonyManager.getInstance().getRecipeManager().getRecipes().get(recipeToken);
                     if ((storage.getRecipeSource() != null && storage.getRecipeSource().equals(recipeSource)) || (
-                      ItemStackUtils.compareItemStacksIgnoreStackSize(storage.getPrimaryOutput(), compareStorage.getPrimaryOutput(), false, true) &&
+                      ItemStackUtils.compareItemStack(matcher, compareStorage.getPrimaryOutput()) &&
                         storage.getCleanedInput().containsAll(compareStorage.getCleanedInput())
                         && compareStorage.getCleanedInput()
                              .containsAll(storage.getCleanedInput())))
@@ -868,8 +874,11 @@ public class CustomRecipe
 
         final CustomRecipe that = (CustomRecipe) o;
 
-
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(result, that.result)
+        final Matcher matcher = new Matcher.Builder(result.getItem())
+            .compareDamage(result.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, result.getTag())
+            .build();
+        return ItemStackUtils.compareItemStack(matcher, that.result)
             && researchIds.equals(that.researchIds)
             && excludedResearchIds.equals(that.excludedResearchIds)
             && Objects.equals(lootTable, that.lootTable)

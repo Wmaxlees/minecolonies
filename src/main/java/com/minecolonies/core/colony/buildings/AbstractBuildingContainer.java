@@ -5,10 +5,11 @@ import com.minecolonies.api.blocks.AbstractBlockHut;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.buildings.IBuildingContainer;
+import com.minecolonies.api.inventory.IInventory;
+import com.minecolonies.api.inventory.InventoryCache;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityRack;
-import com.minecolonies.core.blocks.BlockMinecoloniesRack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -45,6 +46,8 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
      */
     protected final Set<BlockPos> containerList = new HashSet<>();
 
+    protected final InventoryCache cache = new InventoryCache();
+
     /**
      * List of items the worker should keep. With the quantity and if he should keep it in the inventory as well.
      */
@@ -69,6 +72,8 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public AbstractBuildingContainer(final BlockPos pos, final IColony colony)
     {
         super(pos, colony);
+
+        cache.addTarget(pos);
     }
 
     @Override
@@ -80,7 +85,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
         for (int i = 0; i < containerTagList.size(); ++i)
         {
             final CompoundTag containerCompound = containerTagList.getCompound(i);
-            containerList.add(NbtUtils.readBlockPos(containerCompound));
+            this.addContainerPosition(NbtUtils.readBlockPos(containerCompound));
         }
         if (compound.contains(TAG_PRIO))
         {
@@ -128,6 +133,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public void addContainerPosition(@NotNull final BlockPos pos)
     {
         containerList.add(pos);
+        cache.addTarget(pos);
     }
 
     @Override
@@ -169,7 +175,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
                 }
             }
         }
-        else if (block instanceof BlockMinecoloniesRack)
+        else if (block instanceof IInventory)
         {
             addContainerPosition(pos);
             final BlockEntity entity = world.getBlockEntity(pos);
@@ -216,19 +222,4 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
             safeUpdateTEDataFromSchematic();
         }
     }
-
-    //------------------------- !Start! Capabilities handling for minecolonies buildings -------------------------//
-
-    @Nonnull
-    @Override
-    public <T> LazyOptional<T> getCapability(@Nonnull final Capability<T> cap, @Nullable final Direction side)
-    {
-        if (cap == ForgeCapabilities.ITEM_HANDLER && getTileEntity() != null)
-        {
-            return tileEntity.getCapability(cap, side);
-        }
-        return LazyOptional.empty();
-    }
-
-    //------------------------- !End! Capabilities handling for minecolonies buildings -------------------------//
 }

@@ -11,9 +11,11 @@ import com.minecolonies.api.inventory.InventoryCitizen;
 import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.util.EntityUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.SettingsModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingFlorist;
@@ -421,14 +423,22 @@ public final class WorkerUtil
      */
     public static boolean isPartOfRecipe(final ItemStack stack, final IRecipeStorage currentRecipeStorage)
     {
-        if (ItemStackUtils.compareItemStacksIgnoreStackSize(stack, currentRecipeStorage.getPrimaryOutput()))
+        final Matcher primaryMatcher = new Matcher.Builder(currentRecipeStorage.getPrimaryOutput().getItem())
+            .compareDamage(currentRecipeStorage.getPrimaryOutput().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, currentRecipeStorage.getPrimaryOutput().getTag())
+            .build();
+        if (ItemStackUtils.compareItemStack(primaryMatcher, stack))
         {
             return true;
         }
 
         for (final ItemStack input : currentRecipeStorage.getCraftingToolsAndSecondaryOutputs())
         {
-            if (ItemStackUtils.compareItemStacksIgnoreStackSize(input, stack))
+            final Matcher secondaryMatcher = new Matcher.Builder(input.getItem())
+                .compareDamage(input.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, input.getTag())
+                .build();
+            if (ItemStackUtils.compareItemStack(secondaryMatcher, stack))
             {
                 return true;
             }

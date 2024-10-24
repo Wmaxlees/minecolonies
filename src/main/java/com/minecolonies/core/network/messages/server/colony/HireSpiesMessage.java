@@ -1,7 +1,8 @@
 package com.minecolonies.core.network.messages.server.colony;
 
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.network.messages.server.AbstractColonyServerMessage;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -35,9 +36,10 @@ public class HireSpiesMessage extends AbstractColonyServerMessage
             return;
         }
 
-        if (InventoryUtils.getItemCountInItemHandler(new InvWrapper(player.getInventory()), stack -> stack.getItem() == Items.GOLD_INGOT) >= SPIES_GOLD_COST)
+        if (InventoryUtils.countInPlayersInventory(player, stack -> stack.getItem() == Items.GOLD_INGOT) >= SPIES_GOLD_COST)
         {
-            InventoryUtils.reduceStackInItemHandler(new InvWrapper(player.getInventory()), new ItemStack(Items.GOLD_INGOT), SPIES_GOLD_COST);
+            final Matcher goldMatcher = new Matcher.Builder(Items.GOLD_INGOT).build();
+            InventoryUtils.reducePlayerStackSize(player, goldMatcher, SPIES_GOLD_COST);
             colony.getRaiderManager().setSpiesEnabled(true);
             colony.markDirty();
         }

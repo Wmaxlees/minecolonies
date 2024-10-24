@@ -2,10 +2,11 @@ package com.minecolonies.core.util;
 
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.crafting.ExactMatchItemStorage;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.inventory.api.CombinedItemHandler;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -13,6 +14,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.ForgeRegistry;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -34,27 +36,32 @@ public final class SortingUtils
     /**
      * Sort a combined item handler by certain conditions. Group into creative tabs if possible.
      *
-     * @param inv the item handler to sort.
+     * @param list the item handler to sort.
      */
-    public static void sort(final CombinedItemHandler inv)
+    public static void sort(final List<IInventory> list)
     {
-        final CompoundTag backup = inv.serializeNBT();
+        if (list == null || list.isEmpty())
+        {
+            return;
+        }
+
+        final List<ListTag> backups = list.stream().map(IInventory::backupItems).toList();
         final AtomicInteger runCount = new AtomicInteger(0);
 
         try
         {
             final Map<ExactMatchItemStorage, Integer> map = new HashMap<>();
-            if (inv != null)
+            for (final IInventory inventory : list)
             {
-                for (int i = 0; i < inv.getSlots(); i++)
+                for (final Map.Entry<ItemStack, Integer> entry : inventory.getAllItems().entrySet())
                 {
-                    if (ItemStackUtils.isEmpty(inv.getStackInSlot(i)))
+                    if (entry.getKey().isEmpty())
                     {
                         continue;
                     }
-                    final ExactMatchItemStorage storage = new ExactMatchItemStorage(inv.getStackInSlot(i));
-                    inv.setStackInSlot(i, ItemStack.EMPTY);
-                    int amount = storage.getAmount();
+
+                    final ExactMatchItemStorage storage = new ExactMatchItemStorage(entry.getKey());
+                    int amount = entry.getValue();
                     if (map.containsKey(storage))
                     {
                         amount += map.remove(storage);
@@ -62,16 +69,21 @@ public final class SortingUtils
                     map.put(storage, amount);
                 }
 
-                final Tuple<AtomicInteger, Map<Integer, Integer>> tuple = SortingUtils.calcRequiredSlots(map);
-                final double totalSlots = inv.getSlots();
-                final int totalReq = tuple.getA().get();
-                map.entrySet().stream().sorted(SortingUtils::compare)
-                  .forEach(entry -> SortingUtils.pushIntoInv(runCount, entry, inv, tuple.getA(), totalSlots, totalReq, tuple.getB()));
+                inventory.clear();
             }
+
+            // final Tuple<AtomicInteger, Map<Integer, Integer>> tuple = SortingUtils.calcRequiredSlots(map);
+            // final double totalSlots = list.getSlots();
+            // final int totalReq = tuple.getA().get();
+            // map.entrySet().stream().sorted(SortingUtils::compare)
+            //     .forEach(entry -> SortingUtils.pushIntoInv(runCount, entry, list, tuple.getA(), totalSlots, totalReq, tuple.getB()));
         }
         catch (Exception e)
         {
-            inv.deserializeNBT(backup);
+            for (int i = 0; i < list.size(); i++)
+            {
+                list.get(i).restoreItems(backups.get(i));
+            }
             Log.getLogger().warn("Minecolonies warehouse sorting had an error, report it to the mod author.", e);
         }
     }

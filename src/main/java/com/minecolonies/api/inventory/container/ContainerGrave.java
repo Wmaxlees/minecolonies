@@ -1,8 +1,9 @@
 package com.minecolonies.api.inventory.container;
 
+import com.minecolonies.api.inventory.InventoryRack;
 import com.minecolonies.api.inventory.ModContainers;
 import com.minecolonies.api.tileentities.AbstractTileEntityGrave;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
@@ -62,7 +63,7 @@ public class ContainerGrave extends AbstractContainerMenu
         final BlockPos grave = extra.readBlockPos();
 
         final AbstractTileEntityGrave abstractTileEntityGrave = (AbstractTileEntityGrave) inv.player.level().getBlockEntity(grave);
-        this.inventory = abstractTileEntityGrave.getInventory();
+        this.inventory = abstractTileEntityGrave.getItemHandler();
 
         this.grave = abstractTileEntityGrave;
         this.inventorySize = this.inventory.getSlots() / INVENTORY_COLUMNS;

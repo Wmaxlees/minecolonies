@@ -15,10 +15,10 @@ import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Deliver
 import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Pickup;
 import com.minecolonies.api.colony.requestsystem.requester.IRequester;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.EquipmentLevelConstants;
 import com.minecolonies.api.util.constant.TranslationConstants;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.modules.BuildingModules;
 import com.minecolonies.core.colony.buildings.moduleviews.WorkerBuildingModuleView;
 import com.minecolonies.core.colony.jobs.views.CrafterJobView;

@@ -159,7 +159,7 @@ public class EntityAIWorkCrusher extends AbstractEntityAICrafting<JobCrusher, Bu
 
                 worker.swing(InteractionHand.MAIN_HAND);
                 job.setCraftCounter(job.getCraftCounter() + 1);
-                currentRecipeStorage.fullfillRecipe(getLootContext(), ImmutableList.of(worker.getItemHandlerCitizen()));
+                currentRecipeStorage.fullfillRecipe(getLootContext(), ImmutableList.of(worker.getInventory()));
 
                 worker.decreaseSaturationForContinuousAction();
                 worker.getCitizenExperienceHandler().addExperience(0.1);

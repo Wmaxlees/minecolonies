@@ -5,9 +5,12 @@ import com.minecolonies.api.colony.ICitizenDataView;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.network.messages.server.AbstractColonyServerMessage;
 import net.minecraft.world.entity.player.Player;
@@ -113,7 +116,7 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
         }
 
         // Inventory content before
-        Map<ItemStorage, ItemStorage> previousContent = null;
+        Map<ItemStack, Integer> previousContent = null;
         final int amountToTake;
         if (isCreative)
         {
@@ -121,8 +124,11 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
         }
         else
         {
-            amountToTake = Math.min(quantity,
-              InventoryUtils.getItemCountInItemHandler(new InvWrapper(player.getInventory()), stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack)));
+            final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                .compareDamage(itemStack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
+                .build();
+            amountToTake = Math.min(quantity, InventoryUtils.countInPlayersInventory(player, matcher));
         }
 
         final List<ItemStack> itemsToPut = new ArrayList<>();
@@ -141,13 +147,17 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
 
         if (!isCreative && MineColonies.getConfig().getServer().debugInventories.get())
         {
-            previousContent = InventoryUtils.getAllItemsForProviders(citizen.getInventoryCitizen(), new InvWrapper(player.getInventory()));
+            previousContent = citizen.getInventory().getAllItems();
+            for (final Map.Entry<ItemStack, Integer> entry : InventoryUtils.getAllItemsFromPlayer(player).entrySet())
+            {
+                previousContent.put(entry.getKey(), previousContent.getOrDefault(entry.getKey(), 0) + entry.getValue());
+            }
         }
 
         tempAmount = 0;
         for (final ItemStack insertStack : itemsToPut)
         {
-            final ItemStack remainingItemStack = InventoryUtils.addItemStackToItemHandlerWithResult(citizen.getInventoryCitizen(), insertStack);
+            final ItemStack remainingItemStack = citizen.getInventory().insert(insertStack, false);
             if (!ItemStackUtils.isEmpty(remainingItemStack))
             {
                 tempAmount += (insertStack.getCount() - remainingItemStack.getCount());
@@ -161,16 +171,23 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
             int amountToRemoveFromPlayer = tempAmount;
             while (amountToRemoveFromPlayer > 0)
             {
-                final int slot =
-                  InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()), stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(stack, itemStack));
-                final ItemStack itemsTaken = player.getInventory().removeItem(slot, amountToRemoveFromPlayer);
+                final Matcher matcher = new Matcher.Builder(itemStack.getItem())
+                    .compareDamage(itemStack.getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
+                    .build();
+                final ItemStack itemsTaken = InventoryUtils.extractItemFromPlayerInventory(player, matcher, 0, ItemCountType.IGNORE_COUNT, false);
                 amountToRemoveFromPlayer -= ItemStackUtils.getSize(itemsTaken);
             }
         }
 
         if (!isCreative && previousContent != null && MineColonies.getConfig().getServer().debugInventories.get())
         {
-            InventoryUtils.doStorageSetsMatch(previousContent, InventoryUtils.getAllItemsForProviders(citizen.getInventoryCitizen(), new InvWrapper(player.getInventory())), true);
+            final Map<ItemStack, Integer> newContent = citizen.getInventory().getAllItems();
+            for (final Map.Entry<ItemStack, Integer> entry : InventoryUtils.getAllItemsFromPlayer(player).entrySet())
+            {
+                newContent.put(entry.getKey(), newContent.getOrDefault(entry.getKey(), 0) + entry.getValue());
+            }
+            InventoryUtils.doItemSetsMatch(previousContent, newContent, true);
         }
     }
 }

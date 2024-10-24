@@ -12,8 +12,9 @@ import com.minecolonies.api.colony.buildings.workerbuildings.ITownHallView;
 import com.minecolonies.api.colony.colonyEvents.descriptions.IColonyEventDescription;
 import com.minecolonies.api.colony.colonyEvents.registry.ColonyEventDescriptionTypeRegistryEntry;
 import com.minecolonies.api.colony.permissions.PermissionEvent;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Log;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.client.gui.townhall.WindowMainPage;
 import com.minecolonies.core.colony.Colony;
@@ -162,14 +163,8 @@ public class BuildingTownHall extends AbstractBuilding implements ITownHall
             event.serialize(buf);
         }
 
-        final List<ItemStack> maps = new ArrayList<>();
-        for (final ItemStack stack : InventoryUtils.getBuildingInventory(this))
-        {
-            if (!stack.isEmpty() && stack.getItem() == Items.FILLED_MAP)
-            {
-                maps.add(stack);
-            }
-        }
+        final Matcher mapMatcher = new Matcher.Builder(Items.FILLED_MAP).build();
+        final List<ItemStack> maps = findMatches(mapMatcher);
 
         final Level level = colony.getWorld();
 

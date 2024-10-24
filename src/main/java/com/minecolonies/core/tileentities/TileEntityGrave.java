@@ -8,9 +8,9 @@ import com.minecolonies.api.inventory.container.ContainerGrave;
 import com.minecolonies.api.tileentities.AbstractTileEntityGrave;
 import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -70,43 +70,22 @@ public class TileEntityGrave extends AbstractTileEntityGrave
         return content;
     }
 
-    @Override
-    public void updateItemStorage()
-    {
-        if (level != null && !level.isClientSide)
-        {
-            final boolean empty = content.isEmpty();
-            updateContent();
-
-            if ((empty && !content.isEmpty()) || !empty && content.isEmpty())
-            {
-                updateBlockState();
-            }
-            setChanged();
-        }
-    }
-
     /**
      * Just do the content update.
      */
     private void updateContent()
     {
         content.clear();
-        for (int slot = 0; slot < inventory.getSlots(); slot++)
+        for (final Map.Entry<ItemStack, Integer> entry : getAllItems().entrySet())
         {
-            final ItemStack stack = inventory.getStackInSlot(slot);
+            final ItemStorage storage = new ItemStorage(entry.getKey().copy());
+            int amount = entry.getValue();
 
-            if (ItemStackUtils.isEmpty(stack))
-            {
-                continue;
-            }
-
-            final ItemStorage storage = new ItemStorage(stack.copy());
-            int amount = ItemStackUtils.getSize(stack);
             if (content.containsKey(storage))
             {
                 amount += content.remove(storage);
             }
+
             content.put(storage, amount);
         }
     }
@@ -240,7 +219,7 @@ public class TileEntityGrave extends AbstractTileEntityGrave
                 }
                 else
                 {
-                    InventoryUtils.dropItemHandler(inventory, level, this.worldPosition.getX(), this.worldPosition.getY(), this.worldPosition.getZ());
+                    dropAllItems(level, this.worldPosition);
                     level.setBlockAndUpdate(this.worldPosition, Blocks.AIR.defaultBlockState());
                     return false;
                 }

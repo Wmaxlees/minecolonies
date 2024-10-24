@@ -9,8 +9,11 @@ import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.permissions.Action;
 import com.minecolonies.api.network.IMessage;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.MessageUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -112,7 +115,11 @@ public class DirectPlaceMessage implements IMessage
         final ServerPlayer player = ctxIn.getSender();
         final Level world = player.getCommandSenderWorld();
         final IColony colony = IColonyManager.getInstance().getColonyByPosFromWorld(world, pos);
-        InventoryUtils.reduceStackInItemHandler(new InvWrapper(player.getInventory()), stack);
+        final Matcher matcher = new Matcher.Builder(stack.getItem())
+            .compareDamage(stack.getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
+            .build();
+        InventoryUtils.reducePlayerStackSize(player, matcher, 1);
 
         if ((colony == null && state.getBlock() == ModBlocks.blockHutTownHall) || (colony != null && colony.getPermissions().hasPermission(player, Action.MANAGE_HUTS)))
         {

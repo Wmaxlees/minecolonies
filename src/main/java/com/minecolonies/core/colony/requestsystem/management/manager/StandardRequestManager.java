@@ -18,9 +18,9 @@ import com.minecolonies.api.colony.requestsystem.resolver.IRequestResolverProvid
 import com.minecolonies.api.colony.requestsystem.resolver.player.IPlayerRequestResolver;
 import com.minecolonies.api.colony.requestsystem.resolver.retrying.IRetryingRequestResolver;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.requestsystem.management.IStandardRequestManager;
 import com.minecolonies.core.colony.requestsystem.management.handlers.*;
 import com.minecolonies.core.colony.requestsystem.management.manager.wrapped.WrappedStaticStateRequestManager;

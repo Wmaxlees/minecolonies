@@ -5,7 +5,8 @@ import com.minecolonies.api.client.render.modeltype.ModModelTypes;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.Skill;
-import com.minecolonies.api.util.InventoryUtils;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.entity.ai.workers.guard.EntityAIKnight;
 import com.minecolonies.core.util.AttributeModifierUtils;
 import net.minecraft.tags.DamageTypeTags;
@@ -76,19 +77,20 @@ public class JobKnight extends AbstractJobGuard<JobKnight>
     @Override
     public boolean ignoresDamage(@NotNull final DamageSource damageSource)
     {
+        final Matcher shieldMatcher = new Matcher.Builder(Items.SHIELD).build();
         if(damageSource.is(DamageTypeTags.IS_EXPLOSION) && this.getColony().getResearchManager().getResearchEffects().getEffectStrength(SHIELD_USAGE) > 0
-                && InventoryUtils.findFirstSlotInItemHandlerWith(this.getCitizen().getInventory(), Items.SHIELD) != -1)
+                && getCitizen().getInventory().hasMatch(shieldMatcher))
         {
             if (!this.getCitizen().getEntity().isPresent())
             {
                 return true;
             }
             final AbstractEntityCitizen worker = this.getCitizen().getEntity().get();
-            worker.getCitizenItemHandler().setHeldItem(InteractionHand.OFF_HAND, InventoryUtils.findFirstSlotInItemHandlerWith(this.getCitizen().getInventory(), Items.SHIELD));
+            worker.getInventory().setHeldItem(InteractionHand.OFF_HAND, Items.SHIELD);
             worker.startUsingItem(InteractionHand.OFF_HAND);
 
             // Apply the colony Flag to the shield
-            ItemStack shieldStack = worker.getInventoryCitizen().getHeldItem(InteractionHand.OFF_HAND);
+            ItemStack shieldStack = worker.getInventory().getHeldItem(InteractionHand.OFF_HAND);
             CompoundTag nbt = shieldStack.getOrCreateTagElement("BlockEntityTag");
             nbt.put(TAG_BANNER_PATTERNS, worker.getCitizenColonyHandler().getColony().getColonyFlag());
 

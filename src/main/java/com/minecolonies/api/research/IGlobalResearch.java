@@ -1,9 +1,11 @@
 package com.minecolonies.api.research;
 
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.research.costs.IResearchCost;
 import com.minecolonies.api.research.effects.IResearchEffect;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +40,7 @@ public interface IGlobalResearch
      * @param inventory the inventory to check in.
      * @return true if so
      */
-    boolean hasEnoughResources(final IItemHandler inventory);
+    boolean hasEnoughResources(final Player player);
 
     /**
      * Get the cost list from the research.

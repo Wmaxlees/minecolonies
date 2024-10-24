@@ -13,9 +13,9 @@ import com.minecolonies.api.entity.other.AbstractFastMinecoloniesEntity;
 import com.minecolonies.core.entity.pathfinding.navigation.AbstractAdvancedPathNavigate;
 import com.minecolonies.api.sounds.MercenarySounds;
 import com.minecolonies.api.util.DamageSourceKeys;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.MessageUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.entity.ai.minimal.EntityAIInteractToggleAble;
 import com.minecolonies.core.entity.citizen.EntityCitizen;
 import com.minecolonies.core.entity.pathfinding.proxy.GeneralEntityWalkToProxy;
@@ -410,11 +410,10 @@ public class EntityMercenary extends AbstractFastMinecoloniesEntity implements N
             this.swing(InteractionHand.OFF_HAND);
         }
 
-        if (slapTimer == 0 && entityIn instanceof EntityCitizen && colony != null && ((EntityCitizen) entityIn).isActive())
+        if (slapTimer == 0 && entityIn instanceof EntityCitizen citizen && colony != null && ((EntityCitizen) entityIn).isActive())
         {
             slapTimer = SLAP_INTERVAL;
-            final IItemHandler handler = ((EntityCitizen) entityIn).getItemHandlerCitizen();
-            final ItemStack stack = handler.extractItem(rand.nextInt(handler.getSlots()), 5, false);
+            final ItemStack stack = citizen.getInventory().maybeExtractRandomStack(5);
             if (!ItemStackUtils.isEmpty(stack))
             {
                 this.swing(InteractionHand.OFF_HAND);

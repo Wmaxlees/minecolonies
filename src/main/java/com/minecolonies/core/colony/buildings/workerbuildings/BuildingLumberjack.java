@@ -12,8 +12,10 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.AbstractCraftingBuildingModule;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
@@ -132,7 +134,13 @@ public class BuildingLumberjack extends AbstractBuilding
         {
             if (!saplingList.isItemInList(sapling))
             {
-                toKeep.put(stack -> ItemStackUtils.compareItemStacksIgnoreStackSize(sapling.getItemStack(), stack), new Tuple<>(com.minecolonies.api.util.constant.Constants.STACKSIZE, true));
+                final Matcher matcher = new Matcher.Builder(sapling.getItemStack().getItem())
+                        .compareDamage(sapling.getItemStack().getDamageValue())
+                        .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, sapling.getItemStack().getTag())
+                        .build();
+                toKeep.put(
+                        stack -> ItemStackUtils.compareItemStack(matcher, stack),
+                        new Tuple<>(com.minecolonies.api.util.constant.Constants.STACKSIZE, true));
             }
         }
         return toKeep;

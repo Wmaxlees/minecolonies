@@ -4,7 +4,7 @@ import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.jobs.registry.JobEntry;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
 import com.minecolonies.core.colony.buildings.modules.MinimumStockModule;
@@ -17,11 +17,11 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.function.Predicate;
 
-import static com.minecolonies.api.util.ItemStackUtils.ISFOOD;
 import static com.minecolonies.api.util.constant.BuildingConstants.FUEL_LIST;
 import static com.minecolonies.api.util.constant.Constants.STACKSIZE;
 import static com.minecolonies.api.util.constant.SchematicTagConstants.TAG_SITTING;
 import static com.minecolonies.api.util.constant.Suppression.OVERRIDE_EQUALS;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.ISFOOD;
 import static com.minecolonies.core.colony.buildings.modules.BuildingModules.ITEMLIST_FOODEXCLUSION;
 
 /**

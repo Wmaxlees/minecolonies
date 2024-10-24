@@ -49,7 +49,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.minecolonies.api.util.ItemStackUtils.*;
+import static com.minecolonies.api.util.inventory.ItemStackUtils.*;
 import static com.minecolonies.api.util.constant.Constants.DEFAULT_TAB_KEY;
 import static com.minecolonies.api.util.constant.Constants.ONE_HUNDRED_PERCENT;
 import static com.minecolonies.api.util.constant.NbtTagConstants.TAG_SAP_LEAF;

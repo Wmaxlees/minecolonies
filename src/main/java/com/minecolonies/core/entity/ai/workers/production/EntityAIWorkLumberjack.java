@@ -10,6 +10,7 @@ import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.ColonyConstants;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
@@ -823,7 +824,7 @@ public class EntityAIWorkLumberjack extends AbstractEntityAICrafting<JobLumberja
         if (saplingSlot != -1)
         {
             final ItemStack stack = getInventory().getStackInSlot(saplingSlot);
-            worker.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, saplingSlot);
+            worker.getInventory().setHeldItem(InteractionHand.MAIN_HAND, saplingSlot);
 
             if (job.getTree().isDynamicTree() && Compatibility.isDynamicTreeSapling(stack))
             {
@@ -1015,6 +1016,6 @@ public class EntityAIWorkLumberjack extends AbstractEntityAICrafting<JobLumberja
      */
     private boolean hasLogs()
     {
-        return InventoryUtils.hasItemInItemHandler(getInventory(), this::isStackLog);
+        return getInventory().hasMatch(this::isStackLog);
     }
 }

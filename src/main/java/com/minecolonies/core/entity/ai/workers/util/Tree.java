@@ -9,7 +9,8 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.items.ModTags;
 import com.minecolonies.api.util.BlockPosUtil;
 import com.minecolonies.api.util.BlockStateUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.core.MineColonies;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
@@ -502,15 +503,15 @@ public class Tree
         // then we will try to chop it regardless of hut settings.  but the *second* tree of that type we should
         // obey the settings properly.
         final ItemStack sap = IColonyManager.getInstance().getCompatibilityManager().getSaplingForLeaf(leaf.getBlock());
-
         if (sap == null)
         {
             return true;
         }
 
+        final Matcher saplingMatcher = new Matcher.Builder(sap.getItem()).build();
         for (final ItemStorage stack : treesToNotCut)
         {
-            if (ItemStackUtils.compareItemStacksIgnoreStackSize(sap, stack.getItemStack()))
+            if (ItemStackUtils.compareItemStack(saplingMatcher, stack.getItemStack()))
             {
                 return false;
             }

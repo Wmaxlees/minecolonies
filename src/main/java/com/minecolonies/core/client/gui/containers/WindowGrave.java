@@ -88,7 +88,7 @@ public class WindowGrave extends AbstractContainerScreen<ContainerGrave>
     public WindowGrave(final ContainerGrave container, final Inventory playerInventory, final Component iTextComponent)
     {
         super(container, playerInventory, iTextComponent);
-        this.inv = container.grave.getInventory();
+        this.inv = container.grave.getItemHandler();
 
         this.inventoryRows = inv.getSlots() / SLOTS_EACH_ROW;
 

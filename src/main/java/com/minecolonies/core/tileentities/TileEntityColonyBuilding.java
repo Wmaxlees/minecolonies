@@ -13,16 +13,16 @@ import com.minecolonies.api.colony.buildings.IBuildingContainer;
 import com.minecolonies.api.colony.buildings.views.IBuildingView;
 import com.minecolonies.api.colony.permissions.Action;
 import com.minecolonies.api.compatibility.newstruct.BlueprintMapping;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.inventory.api.CombinedItemHandler;
 import com.minecolonies.api.inventory.container.ContainerBuildingInventory;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
-import com.minecolonies.api.tileentities.AbstractTileEntityRack;
 import com.minecolonies.api.tileentities.ITickable;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.WorldUtil;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -225,19 +225,16 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
         {
             for (final BlockPos pos : theBuilding.getContainers())
             {
+                Log.getLogger().info("Checking container at " + pos);
                 if (WorldUtil.isBlockLoaded(level, pos))
                 {
                     final BlockEntity entity = getLevel().getBlockEntity(pos);
-                    if (entity instanceof AbstractTileEntityRack)
+                    if (entity instanceof IInventory inventory)
                     {
-                        if (((AbstractTileEntityRack) entity).hasItemStack(notEmptyPredicate))
+                        if (inventory.hasMatch(notEmptyPredicate))
                         {
                             return pos;
                         }
-                    }
-                    else if (isInTileEntity(entity, notEmptyPredicate))
-                    {
-                        return pos;
                     }
                 }
             }
@@ -572,48 +569,6 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
     public void updateBlockState()
     {
         // Do nothing
-    }
-
-    @NotNull
-    @Override
-    public <T> LazyOptional<T> getCapability(@NotNull final Capability<T> capability, @Nullable final Direction side)
-    {
-        if (!remove && capability == ForgeCapabilities.ITEM_HANDLER && getBuilding() != null)
-        {
-            if (combinedInv == null)
-            {
-                //Add additional containers
-                final Set<IItemHandlerModifiable> handlers = new LinkedHashSet<>();
-                final Level world = colony.getWorld();
-                if (world != null)
-                {
-                    for (final BlockPos pos : building.getContainers())
-                    {
-                        if (WorldUtil.isBlockLoaded(world, pos) && !pos.equals(this.worldPosition))
-                        {
-                            final BlockEntity te = world.getBlockEntity(pos);
-                            if (te != null)
-                            {
-                                if (te instanceof AbstractTileEntityRack)
-                                {
-                                    handlers.add(((AbstractTileEntityRack) te).getInventory());
-                                    ((AbstractTileEntityRack) te).setBuildingPos(this.getBlockPos());
-                                }
-                                else
-                                {
-                                    building.removeContainerPosition(pos);
-                                }
-                            }
-                        }
-                    }
-                }
-                handlers.add(this.getInventory());
-
-                combinedInv = LazyOptional.of(() -> new CombinedItemHandler(building.getSchematicName(), handlers.toArray(new IItemHandlerModifiable[0])));
-            }
-            return (LazyOptional<T>) combinedInv;
-        }
-        return super.getCapability(capability, side);
     }
 
     @Nullable

@@ -5,13 +5,13 @@ import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.SoundUtils;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingArchery;
 import com.minecolonies.core.colony.jobs.JobArcherTraining;
 import com.minecolonies.core.util.WorkerUtil;
+import com.minecolonies.api.util.inventory.InventoryUtils;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.projectile.Arrow;
 import net.minecraft.world.InteractionHand;
@@ -231,8 +231,7 @@ public class EntityAIArcherTraining extends AbstractEntityAITraining<JobArcherTr
             return false;
         }
 
-        final int bowSlot = InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), ModEquipmentTypes.bow.get(), 0, building.getMaxEquipmentLevel());
-        worker.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, bowSlot);
+        worker.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.bow.get(), 0, building.getMaxEquipmentLevel());
         return true;
     }
 

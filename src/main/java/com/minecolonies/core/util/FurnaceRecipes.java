@@ -5,8 +5,9 @@ import com.minecolonies.api.colony.requestsystem.StandardFactoryController;
 import com.minecolonies.api.compatibility.IFurnaceRecipes;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.crafting.RecipeStorage;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;

@@ -4,9 +4,11 @@ import com.google.common.reflect.TypeToken;
 import com.minecolonies.api.colony.requestsystem.factory.IFactoryController;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.ReflectionUtils;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
@@ -258,7 +260,11 @@ public class Tool implements IDeliverable
         {
             return false;
         }
-        return ItemStackUtils.compareItemStacksIgnoreStackSize(getResult(), equipment.getResult());
+        final Matcher matcher = new Matcher.Builder(getResult().getItem())
+            .compareDamage(getResult().getDamageValue())
+            .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getResult().getTag())
+            .build();
+        return ItemStackUtils.compareItemStack(matcher, equipment.getResult());
     }
 
     @Override

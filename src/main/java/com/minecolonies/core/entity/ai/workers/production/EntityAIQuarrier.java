@@ -19,6 +19,9 @@ import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.core.entity.ai.workers.util.LayerBlueprintIterator;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.util.*;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.colony.buildings.AbstractBuildingStructureBuilder;
 import com.minecolonies.core.colony.buildings.modules.QuarryModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingMiner;
@@ -44,6 +47,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Future;
 
 import static com.ldtteam.structurize.placement.AbstractBlueprintIterator.NULL_POS;
@@ -540,9 +544,9 @@ public class EntityAIQuarrier extends AbstractEntityAIStructureWithWorkOrder<Job
         StringBuilder renderData = new StringBuilder(getState() == MINER_MINING_SHAFT || getState() == MINE_BLOCK || getState() == BUILDING_STEP ? RENDER_META_WORKING : "");
         final ItemStack block = new ItemStack(getMainFillBlock());
 
-        for (int slot = 0; slot < worker.getInventoryCitizen().getSlots(); slot++)
+        for (final Map.Entry<ItemStack, Integer> stackAndCount : worker.getInventory().getAllItems().entrySet())
         {
-            final ItemStack stack = worker.getInventoryCitizen().getStackInSlot(slot);
+            final ItemStack stack = stackAndCount.getKey();
             if (stack.getItem() == Items.TORCH && renderData.indexOf(RENDER_META_TORCH) == -1)
             {
                 renderData.append(RENDER_META_TORCH);
@@ -638,10 +642,10 @@ public class EntityAIQuarrier extends AbstractEntityAIStructureWithWorkOrder<Job
     {
         worker.swing(worker.getUsedItemHand());
 
-        final int slot = worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(block);
-        if (slot != -1)
+        final Matcher matcher = new Matcher.Builder(ItemStackUtils.getItemFromBlock(block)).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
-            getInventory().extractItem(slot, 1, false);
+            getInventory().extractStack(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
             //Flag 1+2 is needed for updates
             WorldUtil.setBlockState(world, location, block.defaultBlockState());
         }

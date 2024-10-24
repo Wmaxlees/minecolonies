@@ -19,9 +19,11 @@ import com.minecolonies.api.entity.pathfinding.registry.IPathNavigateRegistry;
 import com.minecolonies.api.inventory.InventoryCitizen;
 import com.minecolonies.api.sounds.EventType;
 import com.minecolonies.api.util.CompatibilityUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.SoundUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.entity.pathfinding.navigation.AbstractAdvancedPathNavigate;
 import com.minecolonies.core.entity.pathfinding.navigation.PathingStuckHandler;
 import com.mojang.datafixers.util.Pair;
@@ -46,10 +48,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ShieldItem;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+
+import javax.annotation.Nonnull;
 
 import static com.minecolonies.api.util.constant.CitizenConstants.*;
 
@@ -574,10 +577,7 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      * @return the inventory this citizen has.
      */
     @NotNull
-    public abstract InventoryCitizen getInventoryCitizen();
-
-    @NotNull
-    public abstract IItemHandler getItemHandlerCitizen();
+    public abstract InventoryCitizen getInventory();
 
     /**
      * Sets whether this entity is a child
@@ -621,15 +621,6 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
      * @return the instance of the handler.
      */
     public abstract ICitizenItemHandler getCitizenItemHandler();
-
-    /**
-     * The Handler for all inventory related methods.
-     *
-     * @return the instance of the handler.
-     */
-    public abstract ICitizenInventoryHandler getCitizenInventoryHandler();
-
-    public abstract void setCitizenInventoryHandler(ICitizenInventoryHandler citizenInventoryHandler);
 
     /**
      * The Handler for all colony related methods.
@@ -709,7 +700,10 @@ public abstract class AbstractEntityCitizen extends AbstractCivilianEntity imple
         if (!level.isClientSide)
         {
             final ItemStack previous = getItemBySlot(slot);
-            if (!ItemStackUtils.compareItemStacksIgnoreStackSize(previous, newItem, false, true))
+            final Matcher matcher = new Matcher.Builder(previous.getItem())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, previous.getTag())
+                .build();
+            if (!ItemStackUtils.compareItemStack(matcher, newItem))
             {
                 markEquipmentDirty();
             }

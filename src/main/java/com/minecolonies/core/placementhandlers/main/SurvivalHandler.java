@@ -17,6 +17,10 @@ import com.minecolonies.api.colony.buildings.IRSComponent;
 import com.minecolonies.api.colony.permissions.Action;
 import com.minecolonies.api.util.*;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.blocks.huts.BlockHutTownHall;
 import com.minecolonies.core.entity.ai.workers.util.ConstructionTapeHelper;
@@ -148,14 +152,15 @@ public class SurvivalHandler implements ISurvivalBlueprintHandler
             final ItemStack stack = new ItemStack(anchor.getBlock());
             if (EventHandler.onBlockHutPlaced(world, player, anchor.getBlock(), blockPos))
             {
-                final int slot = InventoryUtils.findFirstSlotInItemHandlerWith(new InvWrapper(player.getInventory()), anchor.getBlock());
-                if (slot == -1 && !player.isCreative())
+                final Matcher matcher = new Matcher.Builder(ItemStackUtils.getItemFromBlock(anchor.getBlock())).build();
+                final ItemStack matched = InventoryUtils.findFirstMatchInPlayer(player, matcher);
+                if (matched.isEmpty() && !player.isCreative())
                 {
                     SoundUtils.playErrorSound(player, player.blockPosition());
                     return;
                 }
 
-                final ItemStack inventoryStack = slot == -1 ? stack : player.getInventory().getItem(slot);
+                final ItemStack inventoryStack = matched.isEmpty() ? stack : matched;
                 final CompoundTag compound = inventoryStack.getTag();
                 if (compound != null && compound.contains(TAG_COLONY_ID) && tempColony != null && tempColony.getID() != compound.getInt(TAG_COLONY_ID))
                 {
@@ -182,7 +187,7 @@ public class SurvivalHandler implements ISurvivalBlueprintHandler
                 {
                     Log.getLogger().error("Error during EntityPlaceEvent", e);
                 }
-                InventoryUtils.reduceStackInItemHandler(new InvWrapper(player.getInventory()), inventoryStack, 1);
+                InventoryUtils.reducePlayerStackSize(player, matcher, 1);
 
                 if (tempColony == null)
                 {

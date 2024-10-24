@@ -207,9 +207,9 @@ public class ItemResourceScroll extends AbstractItemMinecolonies
             final BlockEntity blockEntity = warehouse.getColony().getWorld().getBlockEntity(container);
             if (blockEntity instanceof TileEntityRack rack)
             {
-                rack.getAllContent().forEach((item, amount) -> {
-                    final int hashCode = item.getItemStack().hasTag() ? item.getItemStack().getTag().hashCode() : 0;
-                    final String key = item.getItemStack().getDescriptionId() + "-" + hashCode;
+                rack.getAllItems().forEach((item, amount) -> {
+                    final int hashCode = item.hasTag() ? item.getTag().hashCode() : 0;
+                    final String key = item.getDescriptionId() + "-" + hashCode;
                     if (!resourcesModule.getResources().containsKey(key))
                     {
                         return;

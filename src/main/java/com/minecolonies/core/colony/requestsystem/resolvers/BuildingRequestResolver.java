@@ -11,9 +11,10 @@ import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requester.IRequester;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
+import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.util.constant.TypeConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.colony.buildings.AbstractBuilding;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingWareHouse;
 import com.minecolonies.core.colony.requestsystem.resolvers.core.AbstractBuildingDependentRequestResolver;
@@ -90,7 +91,7 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
             return !requestParent.getRequestOfType(IDeliverable.class).map(d -> d.matches(itemStack)).orElse(false);
         };
 
-        return InventoryUtils.hasBuildingEnoughElseCount(building, pred, request.getRequest().getMinimumCount()) >= request.getRequest().getMinimumCount();
+        return building.countMatches(pred) >= request.getRequest().getMinimumCount();
     }
 
     @Nullable
@@ -101,7 +102,7 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
       @NotNull final AbstractBuilding building)
     {
         final int totalRequested = request.getRequest().getCount();
-        int totalAvailable = InventoryUtils.getCountFromBuilding(building, itemStack -> request.getRequest().matches(itemStack));
+        int totalAvailable = building.countMatches(itemStack -> request.getRequest().matches(itemStack));
         for (final Map.Entry<ItemStorage, Integer> reserved : building.reservedStacksExcluding(request).entrySet())
         {
             if (request.getRequest().matches(reserved.getKey().getItemStack()))
@@ -135,15 +136,15 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
     @Override
     public void resolveForBuilding(@NotNull final IRequestManager manager, @NotNull final IRequest<? extends IDeliverable> request, @NotNull final AbstractBuilding building)
     {
-        final Set<ICapabilityProvider> tileEntities = getCapabilityProviders(manager, building);
+        final List<IInventory> inventories = building.getInventories();
 
         final int total = request.getRequest().getCount();
         int current = 0;
         final List<ItemStack> deliveries = new ArrayList<>();
 
-        for (final ICapabilityProvider tile : tileEntities)
+        for (final IInventory inventory : inventories)
         {
-            final List<ItemStack> inv = InventoryUtils.filterProvider(tile, itemStack -> request.getRequest().matches(itemStack));
+            final List<ItemStack> inv = inventory.findMatches(itemStack -> request.getRequest().matches(itemStack));
             for (final ItemStack stack : inv)
             {
                 if (!stack.isEmpty() && current < total)
@@ -187,16 +188,5 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
         }
 
         return Optional.empty();
-    }
-
-    @NotNull
-    private Set<ICapabilityProvider> getCapabilityProviders(
-      @NotNull final IRequestManager manager,
-      @NotNull final AbstractBuilding building)
-    {
-        final Set<ICapabilityProvider> tileEntities = Sets.newHashSet();
-        tileEntities.add(building.getTileEntity());
-        tileEntities.removeIf(Objects::isNull);
-        return tileEntities;
     }
 }

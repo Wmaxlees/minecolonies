@@ -11,11 +11,15 @@ import com.minecolonies.api.colony.citizens.event.CitizenAddedEvent;
 import com.minecolonies.api.colony.interactionhandling.IChatPriority;
 import com.minecolonies.api.colony.interactionhandling.IInteractionResponseHandler;
 import com.minecolonies.api.colony.interactionhandling.ModInteractionResponseHandlers;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -133,7 +137,7 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
         // Validate recruitment before returning true
         if (response.equals(recruitAnswer.getA()) && data instanceof IVisitorViewData)
         {
-            if (player.isCreative() || InventoryUtils.getItemCountInItemHandler(new InvWrapper(player.getInventory()), ((IVisitorViewData) data).getRecruitCost().getItem())
+            if (player.isCreative() || InventoryUtils.countInPlayersInventory(player, ((IVisitorViewData) data).getRecruitCost().getItem())
                   >= ((IVisitorViewData) data).getRecruitCost().getCount())
             {
                 return super.onClientResponseTriggered(responseId, player, data, window);
@@ -155,9 +159,14 @@ public class RecruitmentInteraction extends ServerCitizenInteraction
             IColony colony = data.getColony();
             if (colony.getCitizenManager().getCurrentCitizenCount() < colony.getCitizenManager().getPotentialMaxCitizens())
             {
-                if (player.isCreative() || InventoryUtils.attemptReduceStackInItemHandler(new InvWrapper(player.getInventory()),
-                  ((IVisitorData) data).getRecruitCost(),
-                  ((IVisitorData) data).getRecruitCost().getCount(), true, true))
+                final ItemStack recruitCost = ((IVisitorData) data).getRecruitCost();
+                final Matcher matcher = new Matcher.Builder(recruitCost.getItem())
+                    .compareDamage(recruitCost.getDamageValue())
+                    .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, recruitCost.getTag())
+                    .build();
+                if (player.isCreative() || InventoryUtils
+                        .extractItemFromPlayerInventory(player, matcher, recruitCost.getCount(), ItemCountType.MATCH_COUNT_EXACTLY, true)
+                        .getCount() == ((IVisitorData) data).getRecruitCost().getCount())
                 {
                     // Recruits visitor as new citizen and respawns entity
                     colony.getVisitorManager().removeCivilian(data);

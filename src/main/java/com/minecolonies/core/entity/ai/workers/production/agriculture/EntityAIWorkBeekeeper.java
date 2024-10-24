@@ -8,9 +8,9 @@ import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.ai.statemachine.AITarget;
 import com.minecolonies.api.entity.ai.statemachine.states.IAIState;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
-import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.modules.ItemListModule;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingBeekeeper;
 import com.minecolonies.core.colony.interactionhandling.StandardInteraction;
@@ -24,7 +24,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.Bee;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
@@ -330,8 +329,9 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
         }
         if (building.getHarvestTypes().equals(BuildingBeekeeper.HONEYCOMB) || (building.getHarvestTypes().equals(BuildingBeekeeper.BOTH) && lastHarvestedBottle))
         {
-            if (!equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.shears.get()))
+            if (!worker.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.shears.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel()))
             {
+                checkForToolOrWeapon(ModEquipmentTypes.shears.get());
                 return PREPARING;
             }
         }
@@ -361,7 +361,7 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
 
             for (ItemStack stackItem : Compatibility.getCombsFromHive(hive, world, getHoneycombsPerHarvest()))
             {
-                InventoryUtils.transferItemStackIntoNextBestSlotInItemHandler(stackItem, worker.getItemHandlerCitizen());
+                worker.getInventory().insert(stackItem, false);
             }
             world.setBlockAndUpdate(hive, world.getBlockState(hive).setValue(BlockStateProperties.LEVEL_HONEY, 0));
             worker.getCitizenExperienceHandler().addExperience(EXP_PER_HARVEST);
@@ -374,7 +374,7 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
             {
                 itemStack.shrink(1);
             }
-            InventoryUtils.transferItemStackIntoNextBestSlotInItemHandler(new ItemStack(Items.HONEY_BOTTLE, i), worker.getItemHandlerCitizen());
+            worker.getInventory().insert(new ItemStack(Items.HONEY_BOTTLE, i), false);
             world.setBlockAndUpdate(hive, world.getBlockState(hive).setValue(BlockStateProperties.LEVEL_HONEY, 0));
             worker.getCitizenExperienceHandler().addExperience(EXP_PER_HARVEST);
             lastHarvestedBottle = true;
@@ -437,8 +437,15 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
         boolean canBreed = !hasMaxAnimals(bees) && breedableAnimals >= NUM_OF_ANIMALS_TO_BREED;
         if (canBreed)
         {
-            int flowerCount = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), (stack) -> flowersModule.isItemInList(new ItemStorage(stack)))
-                                + InventoryUtils.getCountFromBuilding(building, flowersModule.getList());
+            final List<Matcher> flowerMatchers = new ArrayList<>();
+            for (ItemStorage storage : flowersModule.getList())
+            {
+                flowerMatchers.add(new Matcher.Builder(storage.getItemStack().getItem()).build());
+            }
+
+            int flowerCount = 0;
+            flowerCount += worker.getInventory().countMatches(flowerMatchers);
+            flowerCount += building.getInventories().stream().mapToInt(inv -> inv.countMatches(flowerMatchers)).sum();
 
             if (flowerCount < NUM_OF_FLOWERS_TO_BREED && !building.hasWorkerOpenRequestsOfType(worker.getCitizenData().getId(), TypeToken.of(StackList.class)))
             {
@@ -476,44 +483,13 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
             {
                 animal.setInLove(null);
                 worker.swing(InteractionHand.MAIN_HAND);
-                InventoryUtils.reduceStackInItemHandler(worker.getInventoryCitizen(), worker.getMainHandItem());
+                final Matcher matcher = new Matcher.Builder(worker.getMainHandItem().getItem())
+                  .compareDamage(worker.getMainHandItem().getDamageValue())
+                  .compareNBT(ItemNBTMatcher.EXACT_MATCH, worker.getMainHandItem().getTag())
+                  .build();
+                worker.getInventory().reduceStackSize(matcher, 1);
             }
         }
-    }
-
-    /**
-     * Sets the tool as held item.
-     *
-     * @param toolType the {@link EquipmentTypeEntry} we want to equip
-     * @param hand     the hand to equip it in.
-     * @return true if the tool was equipped.
-     */
-    public boolean equipTool(final InteractionHand hand, final EquipmentTypeEntry toolType)
-    {
-        if (getToolSlot(toolType) != -1)
-        {
-            worker.getCitizenItemHandler().setHeldItem(hand, getToolSlot(toolType));
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Gets the slot in which the Tool is in.
-     *
-     * @param toolType this herders tool type.
-     * @return slot number.
-     */
-    private int getToolSlot(final EquipmentTypeEntry toolType)
-    {
-        final int slot = InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), toolType,
-          TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
-
-        if (slot == -1)
-        {
-            checkForToolOrWeapon(toolType);
-        }
-        return slot;
     }
 
     /**
@@ -527,7 +503,7 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
     {
         if (checkIfRequestForItemExistOrCreateAsync(itemStack))
         {
-            worker.getCitizenItemHandler().setHeldItem(hand, getItemSlot(itemStack.getItem()));
+            worker.getInventory().setHeldItem(hand, itemStack.getItem());
             return true;
         }
         return false;
@@ -544,22 +520,10 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
         if (checkIfRequestForTagExistOrCreateAsync(ItemTags.FLOWERS, NUM_OF_FLOWERS_TO_BREED))
         {
             ItemListModule flowersModule = building.getModuleMatching(ItemListModule.class, m -> m.getId().equals(BUILDING_FLOWER_LIST));
-            worker.getCitizenItemHandler()
-              .setHeldItem(hand, InventoryUtils.findFirstSlotInItemHandlerWith(getInventory(), stack -> flowersModule.isItemInList(new ItemStorage(stack))));
+            worker.getInventory().setHeldItem(hand, stack -> flowersModule.isItemInList(new ItemStorage(stack)));
             return true;
         }
         return false;
-    }
-
-    /**
-     * Gets the slot in which the inserted item is in. (if any).
-     *
-     * @param item The {@link Item} to check for.
-     * @return slot number -1 if not in INV.
-     */
-    public int getItemSlot(final Item item)
-    {
-        return InventoryUtils.findFirstSlotInItemHandlerWith(getInventory(), item);
     }
 
     /**

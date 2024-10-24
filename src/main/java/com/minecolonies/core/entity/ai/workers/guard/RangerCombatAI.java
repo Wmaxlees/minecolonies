@@ -8,10 +8,9 @@ import com.minecolonies.core.entity.pathfinding.PathfindingUtils;
 import com.minecolonies.core.entity.pathfinding.pathresults.PathResult;
 import com.minecolonies.core.entity.pathfinding.PathingOptions;
 import com.minecolonies.api.util.BlockPosUtil;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.SoundUtils;
 import com.minecolonies.api.util.constant.Constants;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.MineColonies;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.colony.buildings.modules.settings.GuardTaskSetting;
@@ -102,12 +101,10 @@ public class RangerCombatAI extends AttackMoveAI<EntityCitizen>
     @Override
     public boolean canAttack()
     {
-        final int weaponSlot =
-          InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(user.getInventoryCitizen(), ModEquipmentTypes.bow.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel());
-
-        if (weaponSlot != -1)
+        
+        if (user.getInventory().hasMatch(ModEquipmentTypes.bow.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel()))
         {
-            user.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, weaponSlot);
+            user.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.bow.get(), 0, user.getCitizenData().getWorkBuilding().getMaxEquipmentLevel());
             if (nextAttackTime - BOW_HOLDING_DELAY >= user.level.getGameTime())
             {
                 user.startUsingItem(InteractionHand.MAIN_HAND);
@@ -238,21 +235,16 @@ public class RangerCombatAI extends AttackMoveAI<EntityCitizen>
 
         if (user.getCitizenColonyHandler().getColony().getResearchManager().getResearchEffects().getEffectStrength(ARCHER_USE_ARROWS) > 0)
         {
-            int slot = InventoryUtils.findFirstSlotInItemHandlerWith(user.getInventoryCitizen(), item -> item.getItem() instanceof ArrowItem);
-            if (slot != -1)
+            if (user.getInventory().hasMatch(item->item.getItem() instanceof ArrowItem))
             {
-                if (!ItemStackUtils.isEmpty(user.getInventoryCitizen().extractItem(slot, 1, true)))
+                if (user.getInventory().extractStack(item -> item.getItem() instanceof ArrowItem, 1, ItemCountType.MATCH_COUNT_EXACTLY, true).isEmpty())
                 {
                     damage += ARROW_EXTRA_DAMAGE;
                     if (arrow instanceof CustomArrowEntity customArrowEntity)
                     {
                         customArrowEntity.setOnHitCallback(entityRayTraceResult ->
                         {
-                            final int arrowSlot = InventoryUtils.findFirstSlotInItemHandlerWith(user.getInventoryCitizen(), item -> item.getItem() instanceof ArrowItem);
-                            if (arrowSlot != -1)
-                            {
-                                user.getInventoryCitizen().extractItem(arrowSlot, 1, false);
-                            }
+                            user.getInventory().extractStack(item -> item.getItem() instanceof ArrowItem, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
 
                             return true;
                         });

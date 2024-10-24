@@ -13,12 +13,14 @@ import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.entity.citizen.VisibleCitizenStatus;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
 import com.minecolonies.api.items.ModItems;
-import com.minecolonies.api.util.InventoryUtils;
-import com.minecolonies.api.util.ItemStackUtils;
 import com.minecolonies.api.util.Tuple;
 import com.minecolonies.api.util.WorldUtil;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.constant.translation.RequestSystemTranslationConstants;
+import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.blocks.BlockScarecrow;
 import com.minecolonies.core.blocks.MinecoloniesCropBlock;
@@ -225,8 +227,8 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
             AdvancementUtils.TriggerAdvancementPlayersForColony(building.getColony(), AdvancementTriggers.MAX_FIELDS::trigger);
         }
 
-        final int amountOfCompostInBuilding = InventoryUtils.hasBuildingEnoughElseCount(building, this::isCompost, 1);
-        final int amountOfCompostInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), this::isCompost);
+        final int amountOfCompostInBuilding = building.countMatches(this::isCompost);
+        final int amountOfCompostInInv = worker.getInventory().countMatches(this::isCompost);
 
         if (amountOfCompostInBuilding + amountOfCompostInInv <= 0)
         {
@@ -331,8 +333,8 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         }
 
         final ItemStack seeds = farmField.getSeed();
-        final int slot = worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(seeds.getItem());
-        if (slot != -1)
+        final Matcher matcher = new Matcher.Builder(seeds.getItem()).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             return FARMER_PLANT;
         }
@@ -389,7 +391,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         final UseOnContext useOnContext = new UseOnContext(world,
           null,
           InteractionHand.MAIN_HAND,
-          getInventory().getStackInSlot(InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), ModEquipmentTypes.hoe.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel())),
+          getInventory().findFirstMatch(ModEquipmentTypes.hoe.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel()),
           blockHitResult);
         final BlockState toolModifiedState = blockState.getToolModifiedState(useOnContext, ToolActions.HOE_TILL, true);
         if (toolModifiedState == null || !toolModifiedState.is(Blocks.FARMLAND))
@@ -586,7 +588,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         {
             if (mineBlock(position.above()))
             {
-                equipHoe();
+                worker.getInventory().equipTool(InteractionHand.MAIN_HAND, ModEquipmentTypes.hoe.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
                 worker.swing(worker.getUsedItemHand());
                 createCorrectFarmlandForSeed(farmField.getSeed(), position);
                 worker.getCitizenItemHandler().damageItemInHand(InteractionHand.MAIN_HAND, 1);
@@ -697,14 +699,6 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
     }
 
     /**
-     * Sets the hoe as held item.
-     */
-    private void equipHoe()
-    {
-        worker.getCitizenItemHandler().setHeldItem(InteractionHand.MAIN_HAND, getHoeSlot());
-    }
-
-    /**
      * Checks if the ground should be planted.
      *
      * @param position  the position to check.
@@ -742,8 +736,8 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
         {
             return false;
         }
-        final int slot = worker.getCitizenInventoryHandler().findFirstSlotInInventoryWith(item.getItem());
-        if (slot == -1)
+        final Matcher matcher = new Matcher.Builder(item.getItem()).build();
+        if (worker.getInventory().hasMatch(matcher))
         {
             return false;
         }
@@ -758,7 +752,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
 
             world.setBlockAndUpdate(position.above(), ((BlockItem) item.getItem()).getBlock().defaultBlockState());
             worker.decreaseSaturationForContinuousAction();
-            getInventory().extractItem(slot, 1, false);
+            getInventory().extractStack(matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY, false);
         }
         return true;
     }
@@ -791,13 +785,13 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
             {
                 return position;
             }
-            final int amountOfCompostInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), this::isCompost);
+            final int amountOfCompostInInv = worker.getInventory().countMatches(this::isCompost);
             if (amountOfCompostInInv == 0)
             {
                 return null;
             }
 
-            if (InventoryUtils.shrinkItemCountInItemHandler(worker.getInventoryCitizen(), this::isCompost))
+            if (worker.getInventory().reduceStackSize(this::isCompost, 1))
             {
                 Network.getNetwork().sendToPosition(new CompostParticleMessage(position.above()),
                   new PacketDistributor.TargetPoint(position.getX(), position.getY(), position.getZ(), BLOCK_BREAK_SOUND_RANGE, world.dimension()));
@@ -821,13 +815,13 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
             {
                 return position;
             }
-            final int amountOfCompostInInv = InventoryUtils.getItemCountInItemHandler(worker.getInventoryCitizen(), this::isCompost);
+            final int amountOfCompostInInv = worker.getInventory().countMatches(this::isCompost);
             if (amountOfCompostInInv == 0)
             {
                 return null;
             }
 
-            if (InventoryUtils.shrinkItemCountInItemHandler(worker.getInventoryCitizen(), this::isCompost))
+            if (worker.getInventory().reduceStackSize(this::isCompost, 1))
             {
                 Network.getNetwork().sendToPosition(new CompostParticleMessage(position.above()),
                   new PacketDistributor.TargetPoint(position.getX(), position.getY(), position.getZ(), BLOCK_BREAK_SOUND_RANGE, world.dimension()));
@@ -904,7 +898,7 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
             {
                 drop.setCount(drop.getCount() * 2);
             }
-            InventoryUtils.addItemStackToItemHandler(worker.getInventoryCitizen(), drop);
+            worker.getInventory().insert(drop, false);
         }
 
         if (state.getBlock() instanceof final CropBlock crops)
@@ -914,16 +908,6 @@ public class EntityAIWorkFarmer extends AbstractEntityAICrafting<JobFarmer, Buil
 
         this.incrementActionsDone();
         worker.decreaseSaturationForContinuousAction();
-    }
-
-    /**
-     * Get's the slot in which the hoe is in.
-     *
-     * @return slot number
-     */
-    private int getHoeSlot()
-    {
-        return InventoryUtils.getFirstSlotOfItemHandlerContainingEquipment(getInventory(), ModEquipmentTypes.hoe.get(), TOOL_LEVEL_WOOD_OR_GOLD, building.getMaxEquipmentLevel());
     }
 
     /**

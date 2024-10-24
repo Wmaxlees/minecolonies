@@ -4,6 +4,7 @@ import com.ldtteam.structurize.util.BlockUtils;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.items.ModTags;
+import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.core.entity.pathfinding.SurfaceType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.tags.BlockTags;

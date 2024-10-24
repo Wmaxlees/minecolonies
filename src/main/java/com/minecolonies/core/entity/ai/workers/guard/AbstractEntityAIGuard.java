@@ -19,7 +19,6 @@ import com.minecolonies.api.entity.citizen.Skill;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.util.BlockPosUtil;
 import com.minecolonies.api.util.DamageSourceKeys;
-import com.minecolonies.api.util.InventoryUtils;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.colony.buildings.AbstractBuildingGuards;
 import com.minecolonies.core.colony.buildings.modules.EntityListModule;
@@ -599,7 +598,7 @@ public abstract class AbstractEntityAIGuard<J extends AbstractJobGuard<J>, B ext
     {
         for (final EquipmentTypeEntry toolType : toolsNeeded)
         {
-            if (!InventoryUtils.hasItemHandlerEquipmentWithLevel(getInventory(), toolType, 0, buildingGuards.getMaxEquipmentLevel()))
+            if (!getInventory().hasMatch(toolType, 0, buildingGuards.getMaxEquipmentLevel()))
             {
                 return false;
             }

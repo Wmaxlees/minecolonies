@@ -17,26 +17,6 @@ public interface ICitizenItemHandler
     void tryPickupItemEntity(@NotNull ItemEntity ItemEntity);
 
     /**
-     * Removes the currently held item.
-     */
-    void removeHeldItem();
-
-    /**
-     * Sets the currently held item.
-     *
-     * @param hand what hand we're setting
-     * @param slot from the inventory slot.
-     */
-    void setHeldItem(InteractionHand hand, int slot);
-
-    /**
-     * Sets the currently held for mainHand item.
-     *
-     * @param slot from the inventory slot.
-     */
-    void setMainHeldItem(int slot);
-
-    /**
      * Swing entity arm, create sound and particle effects.
      * <p>
      * Will not break the block.

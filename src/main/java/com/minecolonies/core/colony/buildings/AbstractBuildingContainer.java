@@ -74,8 +74,6 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public AbstractBuildingContainer(final BlockPos pos, final IColony colony)
     {
         super(pos, colony);
-
-        Log.getLogger().info("Registering AbstractBuildingContainer at " + pos);
         cache.addTarget(new InventoryId(pos));
     }
 
@@ -136,8 +134,6 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public void addContainerPosition(@NotNull final BlockPos pos)
     {
         containerList.add(pos);
-
-        Log.getLogger().info("Registering owned container at " + pos);
         cache.addTarget(new InventoryId(pos));
     }
 

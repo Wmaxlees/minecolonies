@@ -9,6 +9,7 @@ import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.equipment.ModEquipmentTypes;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.api.util.inventory.Matcher;
@@ -272,6 +273,7 @@ public class BuildingStructureHandler<J extends AbstractJobStructure<?, J>, B ex
             {
                 if (!ItemStackUtils.isEmpty(tempStack))
                 {
+                    Log.getLogger().info("Consuming: " + tempStack);
                     final Matcher matcher = new Matcher.Builder(tempStack.getItem())
                         .compareDamage(tempStack.getDamageValue())
                         .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, tempStack.getTag())

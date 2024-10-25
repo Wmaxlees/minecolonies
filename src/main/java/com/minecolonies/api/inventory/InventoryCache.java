@@ -42,8 +42,6 @@ public final class InventoryCache implements IInventoryEventListener
     {
         final Item item = stack.getItem();
 
-        Log.getLogger().info("Caching from " + id + ": " + stack.getDisplayName().getString());
-
         cache.computeIfAbsent(item, i -> new HashMap<>())
              .computeIfAbsent(stack, s -> new HashMap<>())
              .merge(id, stack.getCount(), Integer::sum);
@@ -53,8 +51,6 @@ public final class InventoryCache implements IInventoryEventListener
     {
         final Item item = stack.getItem();
         final int count = stack.getCount();
-
-        Log.getLogger().info("Decaching from " + id + ": " + stack.getDisplayName().getString());
 
         if (!cache.containsKey(item))
         {
@@ -246,8 +242,7 @@ public final class InventoryCache implements IInventoryEventListener
         {
             return;
         }
-        
-        Log.getLogger().info("Processing " + event.type + " event for " + id + ": " + event.stack.getDisplayName().getString());
+
         switch (event.type)
         {
             case ADD:

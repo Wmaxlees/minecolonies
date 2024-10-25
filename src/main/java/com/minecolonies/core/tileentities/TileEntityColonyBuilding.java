@@ -225,7 +225,6 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
         {
             for (final BlockPos pos : theBuilding.getContainers())
             {
-                Log.getLogger().info("Checking container at " + pos);
                 if (WorldUtil.isBlockLoaded(level, pos))
                 {
                     final BlockEntity entity = getLevel().getBlockEntity(pos);

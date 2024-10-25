@@ -80,7 +80,6 @@ public class InventoryUtils
         final int count,
         final ItemCountType countType)
     {
-        Log.getLogger().info("Transfering from source to target: " + source + " -> " + target);
         return transferInternal(source, target,
                 (Boolean simulate) -> source.extractStacks(predicate, count, countType, simulate), count, countType);
     }
@@ -168,10 +167,7 @@ public class InventoryUtils
         final Function<Boolean, List<ItemStack>> extractFromSource,
         final int count, final ItemCountType countType)
     {
-        Log.getLogger().info("Testing extract from target.");
         List<ItemStack> sourceStacks = extractFromSource.apply(true);
-
-        Log.getLogger().info("Extract results from simulation: " + sourceStacks.size());
 
         if (sourceStacks.isEmpty())
         {
@@ -179,8 +175,6 @@ public class InventoryUtils
         }
 
         List<ItemStack> results = target.insert(sourceStacks, true);
-
-        Log.getLogger().info("Insert results from simulation: " + results.size());
 
         for (ItemStack result : results)
         {
@@ -192,11 +186,7 @@ public class InventoryUtils
 
         sourceStacks = extractFromSource.apply(false);
 
-        Log.getLogger().info("Extract results from real: " + sourceStacks.size());
-
         results = target.insert(sourceStacks, false);
-
-        Log.getLogger().info("Insert results from real: " + results.size());
 
         boolean success = true;
         for (ItemStack result : results)
@@ -354,7 +344,6 @@ public class InventoryUtils
     public static boolean doesPlayerHave(@NotNull final Player player, @NotNull final Block block)
     {
         IItemHandler handler = new InvWrapper(player.getInventory());
-        Log.getLogger().info("Checking player inventory for block: " + block);
         return ItemHandlerUtils.hasMatch(handler, block);
     }
 
@@ -375,8 +364,9 @@ public class InventoryUtils
     public static @NotNull ItemStack extractItemFromPlayerInventory(Player player,
             Predicate<ItemStack> requestPredicate, int amount, ItemCountType countType, boolean ignoreArmorAndOffhand)
     {
-        final List<Integer> slots = ItemHandlerUtils.findMatchingSlots(new InvWrapper(player.getInventory()), requestPredicate);
-        int invSize = player.getInventory().getContainerSize();
+        final IItemHandler handler = new InvWrapper(player.getInventory());
+        final List<Integer> slots = ItemHandlerUtils.findMatchingSlots(handler, requestPredicate);
+        int invSize = handler.getSlots();
         if (ignoreArmorAndOffhand)
         {
             invSize -= 5; // 4 armour slots + 1 shield slot
@@ -397,7 +387,7 @@ public class InventoryUtils
             return ItemStack.EMPTY;
         }
 
-        return player.getInventory().getItem(slot);
+        return handler.extractItem(slot, countType.getRemaining(0, amount), false);
     }
 
     public static @NotNull ItemStack extractItemFromPlayerInventory(Player player, @NotNull final Matcher matcher, final int count, final ItemCountType countType, boolean ignoreArmorAndOffhand)

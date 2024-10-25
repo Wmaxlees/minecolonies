@@ -331,10 +331,8 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
      */
     public void checkOrRequestBucket(@Nullable final BuilderBucket requiredResources, final ICitizenData worker, final boolean workerInv)
     {
-        Log.getLogger().info("checkOrRequestBucket");
         if (requiredResources == null)
         {
-            Log.getLogger().info("No required resources");
             return;
         }
 
@@ -353,7 +351,6 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
                 .build();
 
             int count = building.countMatches(matcher);
-            Log.getLogger().info("Checking for " + itemStack.getItemStack().getDisplayName().getString() + " in building inventory. Found: " + count + " Needed: " + entry.getValue());
 
             if (count >= entry.getValue())
             {
@@ -363,7 +360,6 @@ public class BuildingResourcesModule extends AbstractBuildingModule implements I
             if (workerInv)
             {
                 count += worker.getInventory().countMatches(matcher);
-                Log.getLogger().info("Checking for " + itemStack.getItemStack().getDisplayName().getString() + " in worker inventory. Found: " + count + " Needed: " + entry.getValue());
                 if (count >= entry.getValue())
                 {
                     continue;

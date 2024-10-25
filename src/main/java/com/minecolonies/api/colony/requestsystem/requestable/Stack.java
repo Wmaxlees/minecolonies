@@ -275,8 +275,7 @@ public class Stack implements IConcreteDeliverable
     @Override
     public boolean matches(@NotNull final ItemStack stack)
     {
-        final Matcher.Builder matcherBuilder = new Matcher.Builder(getStack().getItem())
-            .compareCount(ItemCountType.USE_COUNT_AS_MINIMUM, getCount());
+        final Matcher.Builder matcherBuilder = new Matcher.Builder(getStack().getItem());
         if (matchDamage)
         {
             matcherBuilder.compareDamage(getStack().getDamageValue());

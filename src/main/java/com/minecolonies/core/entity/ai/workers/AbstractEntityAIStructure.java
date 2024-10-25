@@ -227,7 +227,7 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
                         .compareDamage(res.getItemStack().getDamageValue())
                         .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, res.getItemStack().getTag())
                         .build();
-                    neededItemsList.add(new Tuple<>(itemstack -> ItemStackUtils.compareItemStack(matcher, itemstack), amount));
+                    neededItemsList.add(new Tuple<>(matcher::match, amount));
                 }
             }
         }
@@ -245,7 +245,6 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
 
         if (building.hasMatch(needsCurrently.getA()))
         {
-            Log.getLogger().info("Found item in inventory: " + needsCurrently.getA());
             return GATHERING_REQUIRED_MATERIALS;
         }
 
@@ -357,7 +356,6 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
      */
     protected IAIState structureStep()
     {
-        Log.getLogger().info("Structure step: " + structurePlacer.getB().getStage());
         if (structurePlacer.getB().getStage() == null)
         {
             return PICK_UP_RESIDUALS;
@@ -781,8 +779,7 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
       final List<ItemStack> itemList,
       final boolean force)
     {
-        Log.getLogger().info("Checking for items in inventory: " + itemList);
-        final Map<ItemStorage, Integer> requestedMap = new HashMap<>();
+        final Map<ItemStack, Integer> requestedMap = new HashMap<>();
         for (final ItemStack stack : itemList)
         {
             if (stack.getItem() instanceof BlockItem && isBlockFree(((BlockItem) stack.getItem()).getBlock().defaultBlockState()))
@@ -790,56 +787,40 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
                 continue;
             }
 
-            ItemStorage tempStorage = new ItemStorage(stack.copy());
-            if (requestedMap.containsKey(tempStorage))
+            int count = stack.getCount();
+            if (requestedMap.containsKey(stack))
             {
-                final int oldSize = requestedMap.get(tempStorage);
-                tempStorage.setAmount(tempStorage.getAmount() + oldSize);
+                count += requestedMap.get(stack);
             }
-            requestedMap.put(tempStorage, tempStorage.getAmount());
+            requestedMap.put(stack, count);
         }
 
-        for (final ItemStorage stack : requestedMap.keySet())
+        for (final ItemStack stack : requestedMap.keySet())
         {
-            Log.getLogger().info("Checking for item in inventory: " + stack.getItem());
-            final Matcher matcher = new Matcher.Builder(stack.getItemStack().getItem())
-                .compareDamage(stack.getItemStack().getDamageValue())
-                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getItemStack().getTag())
+            final Matcher matcher = new Matcher.Builder(stack.getItem())
+                .compareDamage(stack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
                 .build();
-            if (!placer.getInventory().hasMatch(stack1 -> ItemStackUtils.compareItemStack(matcher, stack1))
-                  && !placer.building.hasResourceInBucket(stack.getItemStack()))
+            if (!placer.getInventory().hasMatch(matcher)
+                  && !placer.building.hasResourceInBucket(stack))
             {
-                Log.getLogger().info("Don't have: " + stack.getItem());
+                Log.getLogger().info("Item not found in inventory and not required by current bucket: " + stack.getDisplayName().getString());
                 return RECALC;
             }
-            Log.getLogger().info("Found item in inventory: " + stack.getItem());
         }
-
-        Log.getLogger().info("Found all items in inventory.");
 
         final List<Matcher> matchers = requestedMap.keySet().stream()
-            .map(stack -> new Matcher.Builder(stack.getItemStack().getItem())
-                .compareDamage(stack.getItemStack().getDamageValue())
-                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getItemStack().getTag())
+            .map(stack -> new Matcher.Builder(stack.getItem())
+                .compareDamage(stack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
                 .build())
-            .collect(ImmutableList.toImmutableList());
+            .toList();
         final List<ItemStack> foundStacks = placer.getInventory().findMatches(matchers);
-
-        final Map<ItemStorage, Integer> localMap = new HashMap<>();
-        for (final ItemStack stack : foundStacks)
-        {
-            ItemStorage tempStorage = new ItemStorage(stack.copy());
-            if (localMap.containsKey(tempStorage))
-            {
-                final int oldSize = localMap.get(tempStorage);
-                tempStorage.setAmount(tempStorage.getAmount() + oldSize);
-            }
-            localMap.put(tempStorage, tempStorage.getAmount());
-        }
+        Map<ItemStack, Integer> localMap = ItemStackUtils.mergeCounts(foundStacks);
 
         if (force)
         {
-            for (final Map.Entry<ItemStorage, Integer> local : localMap.entrySet())
+            for (final Map.Entry<ItemStack, Integer> local : localMap.entrySet())
             {
                 int req = requestedMap.getOrDefault(local.getKey(), 0);
                 if (req != 0)
@@ -859,23 +840,22 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
         {
             requestedMap.entrySet()
                     .removeIf(entry -> {
-                        if (ItemStackUtils.isEmpty(entry.getKey().getItemStack())) {
+                        if (ItemStackUtils.isEmpty(entry.getKey())) {
                             return true;
                         }
 
-                        final Matcher matcher = new Matcher.Builder(entry.getKey().getItemStack().getItem())
-                                .compareDamage(entry.getKey().getItemStack().getDamageValue())
-                                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, entry.getKey().getItemStack().getTag())
+                        final Matcher matcher = new Matcher.Builder(entry.getKey().getItem())
+                                .compareDamage(entry.getKey().getDamageValue())
+                                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, entry.getKey().getTag())
                                 .build();
 
-                        return foundStacks.stream()
-                                .anyMatch(target -> ItemStackUtils.compareItemStack(matcher, target));
+                        return foundStacks.stream().anyMatch(matcher::match);
                     });
         }
 
-        for (final Map.Entry<ItemStorage, Integer> placedStack : requestedMap.entrySet())
+        for (final Map.Entry<ItemStack, Integer> placedStack : requestedMap.entrySet())
         {
-            final ItemStack stack = placedStack.getKey().getItemStack();
+            final ItemStack stack = placedStack.getKey();
             if (ItemStackUtils.isEmpty(stack))
             {
                 return FAIL;
@@ -896,6 +876,7 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
             if (requests.isEmpty() && completedRequests.isEmpty())
             {
                 final com.minecolonies.api.colony.requestsystem.requestable.Stack stackRequest = new Stack(stack, placer.getTotalAmount(stack).getCount(), 1);
+                Log.getLogger().info("Creating new request: " + stackRequest.getStack().getDisplayName().getString());
                 placer.getWorker().getCitizenData().createRequest(stackRequest);
                 placer.registerBlockAsNeeded(stack);
                 return FAIL;

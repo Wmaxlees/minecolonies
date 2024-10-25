@@ -7,19 +7,17 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.MessageUtils;
 import com.minecolonies.api.util.MessageUtils.MessagePriority;
 import com.minecolonies.api.util.constant.Constants;
 import com.minecolonies.api.util.inventory.InventoryUtils;
-import com.minecolonies.api.util.inventory.ItemHandlerUtils;
 import com.minecolonies.api.util.inventory.params.ItemCountType;
 import com.minecolonies.core.Network;
 import com.minecolonies.core.network.messages.server.colony.UpdateRequestStateMessage;
 import com.minecolonies.core.network.messages.server.colony.citizen.TransferItemsToCitizenRequestMessage;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -39,11 +37,6 @@ public class RequestWindowCitizen extends AbstractWindowCitizen
      * The citizenData.View object.
      */
     private final ICitizenDataView citizen;
-
-    /**
-     * Inventory of the player.
-     */
-    private final Inventory inventory = this.mc.player.getInventory();
 
     /**
      * Is the player in creative or not.
@@ -123,6 +116,8 @@ public class RequestWindowCitizen extends AbstractWindowCitizen
 
         final int count = InventoryUtils.countInPlayersInventory(mc.player, requestPredicate);
 
+        Log.getLogger().info("Attempting to fulfill request: " + request.getRequest() + " with target amount: " + amount + " Have count: " + count);
+
         if (!isCreative && count <= 0)
         {
             return;
@@ -137,7 +132,9 @@ public class RequestWindowCitizen extends AbstractWindowCitizen
         }
         else
         {
-            itemStack = InventoryUtils.extractItemFromPlayerInventory(mc.player, requestPredicate, amount, ItemCountType.USE_COUNT_AS_MAXIMUM, true);
+            itemStack = InventoryUtils.findFirstMatchInPlayer(mc.player, requestPredicate);
+
+            Log.getLogger().info("Possible matching itemStack: " + itemStack.getDisplayName().getString());
             
             if (itemStack.isEmpty())
             {

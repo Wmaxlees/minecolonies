@@ -3,7 +3,6 @@ package com.minecolonies.core.network.messages.server.colony.citizen;
 import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.ICitizenDataView;
 import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.InventoryUtils;
@@ -17,7 +16,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.items.wrapper.InvWrapper;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -129,6 +127,7 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
                 .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
                 .build();
             amountToTake = Math.min(quantity, InventoryUtils.countInPlayersInventory(player, matcher));
+            Log.getLogger().info("Attempting to fulfill request: " + itemStack + " with target amount: " + quantity + " Have count: " + amountToTake);
         }
 
         final List<ItemStack> itemsToPut = new ArrayList<>();
@@ -157,9 +156,11 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
         tempAmount = 0;
         for (final ItemStack insertStack : itemsToPut)
         {
+            Log.getLogger().info("Inserting " + insertStack.getCount() + " " + insertStack.getDisplayName().getString() + " into citizen inventory");
             final ItemStack remainingItemStack = citizen.getInventory().insert(insertStack, false);
             if (!ItemStackUtils.isEmpty(remainingItemStack))
             {
+                Log.getLogger().info("Failed to insert " + remainingItemStack.getCount() + " " + remainingItemStack.getDisplayName().getString() + " into citizen inventory");
                 tempAmount += (insertStack.getCount() - remainingItemStack.getCount());
                 break;
             }
@@ -171,12 +172,14 @@ public class TransferItemsToCitizenRequestMessage extends AbstractColonyServerMe
             int amountToRemoveFromPlayer = tempAmount;
             while (amountToRemoveFromPlayer > 0)
             {
+                Log.getLogger().info("Removing " + amountToRemoveFromPlayer + " " + itemStack.getDisplayName().getString() + " from player inventory");
                 final Matcher matcher = new Matcher.Builder(itemStack.getItem())
                     .compareDamage(itemStack.getDamageValue())
                     .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
                     .build();
-                final ItemStack itemsTaken = InventoryUtils.extractItemFromPlayerInventory(player, matcher, 0, ItemCountType.IGNORE_COUNT, false);
+                final ItemStack itemsTaken = InventoryUtils.extractItemFromPlayerInventory(player, matcher, amountToRemoveFromPlayer, ItemCountType.USE_COUNT_AS_MAXIMUM, true);
                 amountToRemoveFromPlayer -= ItemStackUtils.getSize(itemsTaken);
+                Log.getLogger().info("Removed " + ItemStackUtils.getSize(itemsTaken) + " " + itemStack.getDisplayName().getString() + " from player inventory");
             }
         }
 

@@ -1353,7 +1353,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public <R extends IRequestable> IToken<?> createRequest(@NotNull final ICitizenData citizenData, @NotNull final R requested, final boolean async)
     {
-        Log.getLogger().info("Creating request for citizen: " + citizenData.getName() + " with request: " + ((Stack)requested).getStack().getDisplayName().getString());
+        Log.getLogger().info("Creating request for citizen: " + citizenData.getName() + " with request: " + requested);
         final IToken<?> requestToken = colony.getRequestManager().createRequest(requester, requested);
         final IRequest<?> request = colony.getRequestManager().getRequestForToken(requestToken);
 
@@ -1389,6 +1389,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public <R extends IRequestable> IToken<?> createRequest(@NotNull final R requested, final boolean async)
     {
+        Log.getLogger().info("Creating request for building with request: " + requested);
         final IToken<?> requestToken = colony.getRequestManager().createRequest(requester, requested);
         addRequestToMaps(-1, requestToken, TypeToken.of(requested.getClass()));
 
@@ -1477,7 +1478,6 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         {
             if (!citizen.isRequestAsync(token))
             {
-                Log.getLogger().info("Found sync request with token: " + token);
                 return true;
             }
         }
@@ -1559,7 +1559,6 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         {
             if (!data.isRequestAsync(token))
             {
-                Log.getLogger().info("Found sync request with token: " + token);
                 return true;
             }
         }

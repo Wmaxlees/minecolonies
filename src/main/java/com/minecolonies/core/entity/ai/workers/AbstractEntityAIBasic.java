@@ -316,13 +316,11 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         {
             if (walkTo == null)
             {
-                Log.getLogger().info("Citizen " + worker.getCitizenData().getName() + " has no walkTo set in getNeededItem");
                 final BlockPos pos = building.getTileEntity().getPositionOfChestWithItemStack(needsCurrently.getA());
                 if (pos == null)
                 {
                     return getStateAfterPickUp();
                 }
-                Log.getLogger().info("Walking to " + pos);
                 walkTo = pos;
             }
 
@@ -561,7 +559,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
     @NotNull
     protected IAIState waitForRequests()
     {
-        Log.getLogger().info(worker.getName().getString() + ": waitForRequests");
         delay = DELAY_RECHECK;
         return lookForRequests();
     }
@@ -574,17 +571,13 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
     @NotNull
     private IAIState lookForRequests()
     {
-        Log.getLogger().info(worker.getName().getString() + ": lookForRequests citizen completed requests: " + building.hasCitizenCompletedRequests(worker.getCitizenData()));
-        Log.getLogger().info(worker.getName().getString() + ": lookForRequests building: " + building.hasOpenSyncRequest(worker.getCitizenData()));
         if (!this.building.hasOpenSyncRequest(worker.getCitizenData())
               && !building.hasCitizenCompletedRequests(worker.getCitizenData()))
         {
-            Log.getLogger().info("No open requests found for " + worker.getName().getString());
             return afterRequestPickUp();
         }
         if (building.hasCitizenCompletedRequests(worker.getCitizenData()))
         {
-            Log.getLogger().info("Found completed requests for citizen " + worker.getName().getString());
             final Collection<IRequest<?>> completedRequests = building.getCompletedRequests(worker.getCitizenData());
             final List<IRequest<?>> deliverableRequests = new ArrayList<>();
             for (final IRequest<?> req : completedRequests)
@@ -664,8 +657,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                         return NEEDS_ITEM;
                     }
 
-                    Log.getLogger().info("Transfering all items from resolved delivery request to worker inventory.");
-                    InventoryUtils.transferWithPossibleSwap(worker.getInventory(), inv, matchers, counts, countTypes, itemStack -> {
+                    InventoryUtils.transferWithPossibleSwap(inv, worker.getInventory(), matchers, counts, countTypes, itemStack -> {
                         final Matcher matcher = new Matcher.Builder(itemStack.getItem())
                                 .compareDamage(itemStack.getDamageValue())
                                 .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
@@ -687,6 +679,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                     }
                     else
                     {
+                        Log.getLogger().info("Creating new sync request.");
                         worker.getCitizenData().createRequest(firstDeliverableRequest.getRequest());
                     }
                 }
@@ -694,7 +687,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         }
         else
         {
-            Log.getLogger().info("No open citizen requests found for " + worker.getName().getString());
+            Log.getLogger().info("Citizen doesn't have any completed requests " + worker.getName().getString());
             walkToBuilding();
         }
 
@@ -815,7 +808,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     protected final boolean walkToBuilding()
     {
-        Log.getLogger().info(worker.getName().getString() + ": walkToBuilding");
         @Nullable final IBuilding ownBuilding = building;
         //Return true if the building is null to stall the worker
         return ownBuilding == null
@@ -899,6 +891,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     public boolean retrieveToolInTileEntity(final BlockEntity entity, final EquipmentTypeEntry toolType, final int minLevel, final int maxLevel)
     {
+        Log.getLogger().info("Retrieving tool " + toolType.getDisplayName().getString() + " in tile entity for " + worker.getName().getString());
         if (ModEquipmentTypes.none.get().equals(toolType))
         {
             return false;
@@ -940,8 +933,10 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
 
         if (checkForNeededTool(toolType, minimalLevel))
         {
+            Log.getLogger().info("No tool found for " + worker.getName().getString());
             if (openToolRequests.isEmpty() && completedToolRequests.isEmpty())
             {
+                Log.getLogger().info("No open requests for tool found for " + worker.getName().getString() + ". Creating one.");
                 final Tool request = new Tool(toolType, minimalLevel, building.getMaxEquipmentLevel() < minimalLevel ? minimalLevel : building.getMaxEquipmentLevel());
                 worker.getCitizenData().createRequest(request);
             }
@@ -1576,7 +1571,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
             .build();
         if (worker.getInventory().hasMatch(matcher))
         {
-            Log.getLogger().info("Already have the item in inventory: " + stack.getDisplayName().getString());
             return true;
         }
 
@@ -1695,10 +1689,8 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
     {
         Log.getLogger().info("Checking if request exists for: " + deliverable.getClass().getSimpleName());
         final int invCount = worker.getInventory().countMatches(deliverable::matches);
-        Log.getLogger().info("Inventory count: " + invCount);
         if (invCount >= deliverable.getCount())
         {
-            Log.getLogger().info("Already have full count in inventory: " + deliverable.getClass().getSimpleName());
             return true;
         }
         final int updatedCount = deliverable.getCount() - invCount;
@@ -1707,7 +1699,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         if (building.countMatches(deliverable::matches) >= updatedMinCount &&
             InventoryUtils.transfer(building, worker.getInventory(), deliverable::matches, updatedCount, ItemCountType.MATCH_COUNT_EXACTLY))
         {
-            Log.getLogger().info("Transfered from building to inventory: " + deliverable.getClass().getSimpleName());
             return true;
         }
 
@@ -1763,7 +1754,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
 
     private boolean tryTransferFromPosToWorkerIfNeeded(final BlockPos pos, @NotNull final Tuple<Predicate<ItemStack>, Integer> predicate)
     {
-        Log.getLogger().info("Trying to transfer from pos to worker.");
         final BlockEntity entity = world.getBlockEntity(pos);
         if (entity == null || !(entity instanceof IInventory inv))
         {
@@ -1781,7 +1771,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
             return true; // has already needed transfers...
         }
 
-        Log.getLogger().info("Transferring from pos to worker.");
         InventoryUtils.transfer(inv, worker.getInventory(), predicate.getA(), amount, ItemCountType.MATCH_COUNT_EXACTLY);
         existingAmount = worker.getInventory().countMatches(predicate.getA());
         // has already needed transfers...

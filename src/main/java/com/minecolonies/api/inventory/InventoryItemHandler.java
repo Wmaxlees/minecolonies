@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.Optional;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import com.minecolonies.api.crafting.ExactMatchItemStorage;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.ItemHandlerUtils;
 import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.api.util.inventory.Matcher;
@@ -29,17 +29,18 @@ public abstract class InventoryItemHandler implements IInventory
 
     /**
      * Get the position of the inventory if the inventory is part
-     * of a block or null if the inventory is part of an entity.
+     * of a block or entity id if the inventory is part of an entity.
      * 
      * @return The position of the inventory or null.
      */
-    public abstract BlockPos getPos();
+    public abstract InventoryId getInventoryId();
 
-    protected InventoryCache cache = new InventoryCache();
+    protected InventoryCache cache;
 
-    public InventoryItemHandler()
+    public void initCache()
     {
-        cache.addTarget(getPos());
+        cache = new InventoryCache();
+        cache.addTarget(getInventoryId());
     }
 
     @Override

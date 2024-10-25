@@ -445,7 +445,7 @@ public class EntityAIWorkBeekeeper extends AbstractEntityAIInteract<JobBeekeeper
 
             int flowerCount = 0;
             flowerCount += worker.getInventory().countMatches(flowerMatchers);
-            flowerCount += building.getInventories().stream().mapToInt(inv -> inv.countMatches(flowerMatchers)).sum();
+            flowerCount += building.getInventories(false).stream().mapToInt(inv -> inv.countMatches(flowerMatchers)).sum();
 
             if (flowerCount < NUM_OF_FLOWERS_TO_BREED && !building.hasWorkerOpenRequestsOfType(worker.getCitizenData().getId(), TypeToken.of(StackList.class)))
             {

@@ -217,15 +217,11 @@ public abstract class AbstractEntityAIStructureWithWorkOrder<J extends AbstractJ
     @Override
     protected boolean checkIfNeedsItem()
     {
-        Log.getLogger().info(worker.getName().getString() + " Checking if needs item");
         if (job.hasWorkOrder() && building.getNeededResources().isEmpty() && !building.hasCitizenCompletedRequests(worker.getCitizenData()) && !recalculated && (structurePlacer == null || !structurePlacer.getB().hasBluePrint() || !job.getWorkOrder().isRequested()))
         {
-            Log.getLogger().info(worker.getName().getString() + " does not need item");
             return false;
         }
-        final boolean result = super.checkIfNeedsItem();
-        Log.getLogger().info(worker.getName().getString() + " needs item: " + result);
-        return result;
+        return super.checkIfNeedsItem();
     }
 
     @Override

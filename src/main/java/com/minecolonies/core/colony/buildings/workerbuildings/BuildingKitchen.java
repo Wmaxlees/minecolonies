@@ -169,7 +169,7 @@ public class BuildingKitchen extends AbstractBuilding
                 storage = FurnaceRecipes.getInstance().getFirstSmeltingRecipeByResult(stackPredicate);
                 if (storage != null)
                 {
-                    final List<IInventory> inventories = building.getInventories();
+                    final List<IInventory> inventories = building.getInventories(true);
 
                     if (!storage.canFullFillRecipe(count, Collections.emptyMap(), (IInventory[])inventories.toArray()))
                     {

@@ -26,6 +26,7 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.IRequestable;
+import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Pickup;
 import com.minecolonies.api.colony.requestsystem.requester.IRequester;
 import com.minecolonies.api.colony.requestsystem.resolver.IRequestResolver;
@@ -1166,7 +1167,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     }
 
     @Override
-    public List<IInventory> getInventories()
+    public List<IInventory> getInventories(final boolean includeCitizens)
     {
         if (this.getAllAssignedCitizen().isEmpty() || colony == null || colony.getWorld() == null)
         {
@@ -1177,6 +1178,14 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         if (getTileEntity() != null)
         {
             inventories.add(getTileEntity());
+        }
+
+        if (includeCitizens)
+        {
+            for (final ICitizenData citizen : getAllAssignedCitizen())
+            {
+                inventories.add(citizen.getInventory());
+            }
         }
 
         for (final BlockPos pos : containerList)
@@ -1344,6 +1353,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public <R extends IRequestable> IToken<?> createRequest(@NotNull final ICitizenData citizenData, @NotNull final R requested, final boolean async)
     {
+        Log.getLogger().info("Creating request for citizen: " + citizenData.getName() + " with request: " + ((Stack)requested).getStack().getDisplayName().getString());
         final IToken<?> requestToken = colony.getRequestManager().createRequest(requester, requested);
         final IRequest<?> request = colony.getRequestManager().getRequestForToken(requestToken);
 
@@ -1465,9 +1475,9 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
 
         for (final IToken<?> token : getOpenRequestsByCitizen().get(citizen.getId()))
         {
-            Log.getLogger().info("Checking sync request with token: " + token);
             if (!citizen.isRequestAsync(token))
             {
+                Log.getLogger().info("Found sync request with token: " + token);
                 return true;
             }
         }
@@ -1549,6 +1559,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         {
             if (!data.isRequestAsync(token))
             {
+                Log.getLogger().info("Found sync request with token: " + token);
                 return true;
             }
         }
@@ -2055,7 +2066,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public boolean isFull()
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             if (!inventory.isFull())
             {
@@ -2075,7 +2086,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public boolean hasMatch(Predicate<ItemStack> predicate)
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             if (inventory.hasMatch(predicate))
             {
@@ -2090,7 +2101,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public List<ItemStack> findMatches(@NotNull Predicate<ItemStack> predicate)
     {
         final List<ItemStack> list = new ArrayList<>();
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             list.addAll(inventory.findMatches(predicate));
         }
@@ -2114,7 +2125,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public ItemStack findFirstMatch(Predicate<ItemStack> predicate)
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             final ItemStack stack = inventory.findFirstMatch(predicate);
             if (!ItemStackUtils.isEmpty(stack))
@@ -2136,7 +2147,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public int countMatches(Predicate<ItemStack> predicate)
     {
         int matches = 0;
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             matches += inventory.countMatches(predicate);
         }
@@ -2175,7 +2186,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
             ItemCountType countType)
     {
         int found = 0;
-        final List<IInventory> inventories = getInventories();
+        final List<IInventory> inventories = getInventories(false);
         for (int i = 0; i < inventories.size(); ++i)
         {
             found += countFunc.apply(inventories.get(i));
@@ -2215,7 +2226,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public ItemStack insert(@Nullable ItemStack itemStack, boolean simulate)
     {
         ItemStack result = itemStack.copy();
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             result = inventory.insert(itemStack, simulate);
             if (ItemStackUtils.isEmpty(result))
@@ -2250,7 +2261,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public ListTag backupItems()
     {
         ListTag tag = new ListTag();
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             final ListTag invTag = inventory.backupItems();
             tag.add(invTag);
@@ -2262,7 +2273,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public void restoreItems(ListTag tag)
     {
-        final List<IInventory> inventories = getInventories();
+        final List<IInventory> inventories = getInventories(false);
         for (int i = 0; i < tag.size(); ++i)
         {
             inventories.get(i).restoreItems(tag.getList(i));
@@ -2273,7 +2284,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public List<Matcher> findMissing(@NotNull List<Matcher> matchers)
     {
         List<Matcher> missing = new ArrayList<>();
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             missing = inventory.findMissing(missing);
             if (missing.isEmpty())
@@ -2290,7 +2301,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     {
         // TODO: Can we actually check whether the inventories have space together rather
         // than if one of them can fit all the items.
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             if (inventory.hasSpaceFor(itemStacks, ignoreContents))
             {
@@ -2310,7 +2321,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public ItemStack forceInsert(@NotNull ItemStack itemStack, @NotNull Predicate<ItemStack> toKeep, boolean simulate)
     {
-        final List<IInventory> inventories = getInventories();
+        final List<IInventory> inventories = getInventories(false);
 
         ItemStack result = itemStack.copy();
         for (final IInventory inventory : inventories)
@@ -2347,7 +2358,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public ItemStack extractStack(Predicate<ItemStack> predicate, int count, ItemCountType countType,
             boolean simulate)
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             final ItemStack result = inventory.extractStack(predicate, count, countType, simulate);
             if (!ItemStackUtils.isEmpty(result))
@@ -2369,7 +2380,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public void clear()
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             inventory.clear();
         }
@@ -2384,7 +2395,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public boolean reduceStackSize(Predicate<ItemStack> predicate, int amount)
     {
-        for (final IInventory inventory : getInventories())
+        for (final IInventory inventory : getInventories(false))
         {
             final boolean result = inventory.reduceStackSize(predicate, amount);
             if (result)
@@ -2399,7 +2410,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public ItemStack maybeExtractRandomStack(int amount)
     {
-        final List<IInventory> inventories = getInventories();
+        final List<IInventory> inventories = getInventories(false);
         final int randomInventory = rand.nextInt(inventories.size());
         return inventories.get(randomInventory).maybeExtractRandomStack(amount);
     }
@@ -2415,7 +2426,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     {
         // We're just averaging the percent full of all inventories. This is not going
         // to be accurate if the inventories have different sizes.
-        final List<IInventory> inventories = getInventories();
+        final List<IInventory> inventories = getInventories(false);
         if (inventories.isEmpty())
         {
             return 100;

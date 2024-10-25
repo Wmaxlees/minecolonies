@@ -136,7 +136,7 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
     @Override
     public void resolveForBuilding(@NotNull final IRequestManager manager, @NotNull final IRequest<? extends IDeliverable> request, @NotNull final AbstractBuilding building)
     {
-        final List<IInventory> inventories = building.getInventories();
+        final List<IInventory> inventories = building.getInventories(true);
 
         final int total = request.getRequest().getCount();
         int current = 0;

@@ -55,7 +55,7 @@ public class EntityAIDruid extends AbstractEntityAIGuard<JobDruid, AbstractBuild
             // Mistletoes and water bottles
             final Matcher matcher = new Matcher.Builder(ModItems.magicpotion)
                 .build();
-            InventoryUtils.transfer(building.getInventories(), worker.getInventory(), matcher, 32, ItemCountType.USE_COUNT_AS_MAXIMUM);
+            InventoryUtils.transfer(building.getInventories(false), worker.getInventory(), matcher, 32, ItemCountType.USE_COUNT_AS_MAXIMUM);
 
             if (worker.getInventory().countMatches(item -> item.getItem() == ModItems.magicpotion) < 8)
             {

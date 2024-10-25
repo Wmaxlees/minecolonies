@@ -468,7 +468,7 @@ public interface IBuilding extends IBuildingContainer, IModuleContainer<IBuildin
      *
      * @return All building inventories
      */
-    List<IInventory> getInventories();
+    List<IInventory> getInventories(final boolean includeCitizens);
 
     /**
      * Get setting for key. Utility function.

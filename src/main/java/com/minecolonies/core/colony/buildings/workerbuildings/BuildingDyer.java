@@ -202,7 +202,7 @@ public class BuildingDyer extends AbstractBuilding
             IRecipeStorage recipe = super.getFirstFulfillableRecipe(stackPredicate, count, considerReservation);
             if (recipe == null && stackPredicate.test(new ItemStack(Items.WHITE_WOOL)))
             {
-                final List<IInventory> inventories = building.getInventories();
+                final List<IInventory> inventories = building.getInventories(true);
                 for (ItemStorage color : getWoolItems())
                 {
                     IToken<?> token = getTokenForWool(color);

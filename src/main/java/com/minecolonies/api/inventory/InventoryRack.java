@@ -22,7 +22,6 @@ import net.minecraftforge.items.ItemStackHandler;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.Optional;
 
 public class InventoryRack extends BlockEntity implements IInventory
 {
@@ -34,6 +33,7 @@ public class InventoryRack extends BlockEntity implements IInventory
         public InventoryProxy(final BlockPos pos)
         {
             this.pos = pos;
+            initCache();
         }
 
         public IItemHandler getItemHandler()
@@ -47,9 +47,9 @@ public class InventoryRack extends BlockEntity implements IInventory
         }
 
         @Override
-        public BlockPos getPos()
+        public InventoryId getInventoryId()
         {
-            return pos;
+            return new InventoryId(pos);
         }
     }
 

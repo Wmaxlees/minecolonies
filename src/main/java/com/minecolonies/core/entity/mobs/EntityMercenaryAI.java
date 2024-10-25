@@ -163,9 +163,7 @@ public class EntityMercenaryAI extends Goal
 
                 if (building != null)
                 {
-                    final List<IInventory> inventories = building.getInventories();
-                    final IInventory inventory = inventories.get(rand.nextInt(inventories.size()));
-                    final ItemStack stack = inventory.maybeExtractRandomStack(5);
+                    final ItemStack stack = building.maybeExtractRandomStack(5);
 
                     if (!ItemStackUtils.isEmpty(stack))
                     {

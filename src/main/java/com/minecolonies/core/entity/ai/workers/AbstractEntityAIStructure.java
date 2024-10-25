@@ -812,7 +812,10 @@ public abstract class AbstractEntityAIStructure<J extends AbstractJobStructure<?
                 Log.getLogger().info("Don't have: " + stack.getItem());
                 return RECALC;
             }
+            Log.getLogger().info("Found item in inventory: " + stack.getItem());
         }
+
+        Log.getLogger().info("Found all items in inventory.");
 
         final List<Matcher> matchers = requestedMap.keySet().stream()
             .map(stack -> new Matcher.Builder(stack.getItemStack().getItem())

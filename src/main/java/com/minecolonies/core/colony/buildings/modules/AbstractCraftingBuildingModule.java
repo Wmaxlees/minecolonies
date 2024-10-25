@@ -781,7 +781,7 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
             final IRecipeStorage storage = IColonyManager.getInstance().getRecipeManager().getRecipes().get(token);
             if (storage != null && (stackPredicate.test(storage.getPrimaryOutput()) || storage.getAlternateOutputs().stream().anyMatch(i -> stackPredicate.test(i))))
             {
-                final List<IInventory> inventories = building.getInventories();
+                final List<IInventory> inventories = building.getInventories(true);
                 IRecipeStorage toTest = storage.getRecipeType() instanceof MultiOutputRecipe ? storage.getClassicForMultiOutput(stackPredicate) : storage;
                 if (toTest.canFullFillRecipe(count, considerReservation ? reservedStacks() : Collections.emptyMap(), (IInventory[])inventories.toArray()))
                 {
@@ -795,7 +795,7 @@ public abstract class AbstractCraftingBuildingModule extends AbstractBuildingMod
     @Override
     public boolean fullFillRecipe(final IRecipeStorage storage)
     {
-        final List<IInventory> inventories = building.getInventories();
+        final List<IInventory> inventories = building.getInventories(true);
         final ICitizenData data = building.getModuleMatching(WorkerBuildingModule.class, m -> m.getJobEntry() == jobEntry).getFirstCitizen();
 
         if (data == null || !data.getEntity().isPresent())

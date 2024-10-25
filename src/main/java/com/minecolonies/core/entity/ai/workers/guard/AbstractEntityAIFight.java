@@ -226,7 +226,7 @@ public abstract class AbstractEntityAIFight<J extends AbstractJobGuard<J>, B ext
                           .compareDamage(armorStack.getDamageValue())
                           .compareNBT(ItemNBTMatcher.EXACT_MATCH, armorStack.getTag())
                           .build();
-                        InventoryUtils.transfer(worker.getInventory(), building.getInventories(), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
+                        InventoryUtils.transfer(worker.getInventory(), building.getInventories(false), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
                     }
                 }
                 else
@@ -238,7 +238,7 @@ public abstract class AbstractEntityAIFight<J extends AbstractJobGuard<J>, B ext
                             .compareDamage(weaponStack.getDamageValue())
                             .compareNBT(ItemNBTMatcher.EXACT_MATCH, weaponStack.getTag())
                             .build();
-                        InventoryUtils.transfer(worker.getInventory(), building.getInventories(), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
+                        InventoryUtils.transfer(worker.getInventory(), building.getInventories(false), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
                     }
 
                     // Used for further comparisons, set to the right inventory slot afterwards
@@ -246,7 +246,7 @@ public abstract class AbstractEntityAIFight<J extends AbstractJobGuard<J>, B ext
                       .compareDamage(bestItem.getDamageValue())
                       .compareNBT(ItemNBTMatcher.EXACT_MATCH, bestItem.getTag())
                       .build();
-                    InventoryUtils.transfer(building.getInventories(), worker.getInventory(), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
+                    InventoryUtils.transfer(building.getInventories(false), worker.getInventory(), matcher, 1, ItemCountType.MATCH_COUNT_EXACTLY);
                     worker.setItemSlot(item.getType(), bestItem);
                 }
             }

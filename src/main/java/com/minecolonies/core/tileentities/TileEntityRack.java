@@ -238,7 +238,6 @@ public class TileEntityRack extends AbstractTileEntityRack implements IMateriall
         }
 
         final ListTag inventoryTagList = compound.getList(TAG_INVENTORY, TAG_COMPOUND);
-        Log.getLogger().info("Loading TileEntityRack at " + getBlockPos() + " with size: " + inventoryTagList.stream().filter(tag -> !((CompoundTag)tag).contains(TAG_EMPTY)).count());
         restoreItems(inventoryTagList);
 
         if (compound.contains(TAG_POS))
@@ -261,7 +260,6 @@ public class TileEntityRack extends AbstractTileEntityRack implements IMateriall
         super.saveAdditional(compound);
         compound.putInt(TAG_SIZE, size);
         final ListTag inventoryTagList = backupItems();
-        Log.getLogger().info("Saving TileEntityRack at " + getBlockPos() + " with size: " + inventoryTagList.stream().filter(tag -> !((CompoundTag)tag).contains(TAG_EMPTY)).count());
         compound.put(TAG_INVENTORY, inventoryTagList);
         BlockPosUtil.write(compound, TAG_POS, buildingPos);
         compound.putByte(TAG_VERSION, version);

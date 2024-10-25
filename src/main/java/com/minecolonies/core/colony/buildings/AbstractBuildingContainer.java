@@ -1,5 +1,6 @@
 package com.minecolonies.core.colony.buildings;
 
+import com.ldtteam.blockui.mod.Log;
 import com.ldtteam.structurize.storage.StructurePacks;
 import com.minecolonies.api.blocks.AbstractBlockHut;
 import com.minecolonies.api.colony.IColony;
@@ -7,6 +8,7 @@ import com.minecolonies.api.colony.buildings.IBuilding;
 import com.minecolonies.api.colony.buildings.IBuildingContainer;
 import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.inventory.InventoryCache;
+import com.minecolonies.api.inventory.InventoryId;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityRack;
@@ -73,7 +75,8 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     {
         super(pos, colony);
 
-        cache.addTarget(pos);
+        Log.getLogger().info("Registering AbstractBuildingContainer at " + pos);
+        cache.addTarget(new InventoryId(pos));
     }
 
     @Override
@@ -133,7 +136,9 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public void addContainerPosition(@NotNull final BlockPos pos)
     {
         containerList.add(pos);
-        cache.addTarget(pos);
+
+        Log.getLogger().info("Registering owned container at " + pos);
+        cache.addTarget(new InventoryId(pos));
     }
 
     @Override

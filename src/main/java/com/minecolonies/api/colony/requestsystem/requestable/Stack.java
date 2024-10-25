@@ -287,10 +287,7 @@ public class Stack implements IConcreteDeliverable
         }
         final Matcher matcher = matcherBuilder.build();
 
-        Log.getLogger().info("Checking if we can resolve stack request for " + getCount() + " " + getStack().getDisplayName().getString() + " with stack: " + stack);
-        final boolean result = ItemStackUtils.compareItemStack(matcher, stack);
-        Log.getLogger().info("Match: " + result);
-        return result;
+        return ItemStackUtils.compareItemStack(matcher, stack);
     }
 
     @Override
@@ -379,7 +376,7 @@ public class Stack implements IConcreteDeliverable
             .build();
         if (!ItemStackUtils.compareItemStack(stackMatcher, stack1.getStack()))
         {
-            Log.getLogger().info("Stacks do not match: " + getStack().getDisplayName().getString() + " vs " + stack1.getStack().getDisplayName().getString());
+            Log.getLogger().info("Comparing Stacks Requestable: Stacks do not match: " + getStack().getDisplayName().getString() + " vs " + stack1.getStack().getDisplayName().getString());
             return false;
         }
 
@@ -388,7 +385,7 @@ public class Stack implements IConcreteDeliverable
             .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, getResult().getTag())
             .build();
         final boolean result = ItemStackUtils.compareItemStack(resultMatcher, stack1.getResult());
-        Log.getLogger().info("Results  match: " + result + " " + getResult().getDisplayName().getString() + " vs " + stack1.getResult().getDisplayName().getString());
+        Log.getLogger().info("Comparing Stacks Requestable: Results match: " + result + " " + getResult().getDisplayName().getString() + " vs " + stack1.getResult().getDisplayName().getString());
         return result;
     }
 

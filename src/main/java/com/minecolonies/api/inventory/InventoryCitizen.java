@@ -6,11 +6,11 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.entity.citizen.AbstractEntityCitizen;
 import com.minecolonies.api.equipment.registry.EquipmentTypeEntry;
 import com.minecolonies.api.inventory.events.AbstractInventoryEvent;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.ItemHandlerUtils;
 import com.minecolonies.api.util.inventory.ItemStackUtils;
 import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -22,7 +22,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.Level;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.IItemHandlerModifiable;
 import org.jetbrains.annotations.NonNls;
@@ -90,6 +89,7 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
     public InventoryCitizen(final String title, final boolean localeEnabled, final ICitizenData citizen)
     {
         this.citizen = citizen;
+        initCache();
         if (localeEnabled)
         {
             customName = title;
@@ -443,8 +443,6 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
             return stack;
         }
 
-        final Entity entity = citizen.getEntity().orElse(null);
-        final int entityId = entity == null ? 0 : entity.getId();
         final ItemStack copy = stack.copy();
         final ItemStack inSlot = mainInventory.get(slot);
         final Matcher matcher = new Matcher.Builder(stack.getItem())
@@ -463,8 +461,12 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
                 markDirty();
                 freeSlots--;
                 mainInventory.set(slot, copy);
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
-                        AbstractInventoryEvent.UpdateType.ADD, entityId);
+                Log.getLogger().info("Inserting item into slot " + slot + " with stack " + copy + " for citizen " + citizen == null ? "null" : citizen.getName());
+                if (citizen != null)
+                {
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
+                            AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
+                }
             }
             return ItemStack.EMPTY;
         }
@@ -476,8 +478,11 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
             {
                 markDirty();
                 inSlot.setCount(inSlot.getCount() + copy.getCount());
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
-                        AbstractInventoryEvent.UpdateType.ADD, entityId);
+                if (citizen != null)
+                {
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(copy,
+                            AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
+                }
             }
             return ItemStack.EMPTY;
         }
@@ -487,8 +492,11 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
             {
                 markDirty();
                 inSlot.setCount(inSlot.getCount() + avail);
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot.copyWithCount(avail),
-                        AbstractInventoryEvent.UpdateType.ADD, entityId);
+                if (citizen != null)
+                {
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot.copyWithCount(avail),
+                            AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
+                }
             }
             copy.setCount(copy.getCount() - avail);
             return copy;
@@ -511,12 +519,10 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
                 markDirty();
                 freeSlots++;
                 mainInventory.set(slot, ItemStack.EMPTY);
-                if (citizen != null && citizen.getEntity().isPresent())
+                if (citizen != null)
                 {
-                    final Entity entity = citizen.getEntity().orElse(null);
-                    final int entityId = entity == null ? 0 : entity.getId();
                     MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot,
-                            AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+                            AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
                 }
             }
             return inSlot;
@@ -534,12 +540,10 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
                 {
                     freeSlots++;
                 }
-                if (citizen != null && citizen.getEntity().isPresent())
+                if (citizen != null)
                 {
-                    final Entity entity = citizen.getEntity().orElse(null);
-                    final int entityId = entity == null ? 0 : entity.getId();
                     MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(inSlot.copyWithCount(amount),
-                            AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+                            AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
                 }  
             }
             return copy;
@@ -657,12 +661,10 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
                     {
                         this.mainInventory.set(j, itemstack);
                         freeSlots--;
-                        if (citizen != null && citizen.getEntity().isPresent())
+                        if (citizen != null)
                         {
-                            final Entity entity = citizen.getEntity().get();
-                            final int entityId = entity == null ? 0 : entity.getId();
                             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(itemstack,
-                                    AbstractInventoryEvent.UpdateType.ADD, entityId);
+                                    AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
                         }
                     }
                 }
@@ -731,16 +733,27 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
             freeSlots++;
         }
 
+        final String name;
+        if (citizen != null)
+        {
+            name = citizen.getName();
+        }
+        else
+        {
+            name = "null";
+        }
+
         mainInventory.set(slot, stack);
 
-        if (citizen != null && citizen.getEntity().isPresent())
+        if (citizen != null)
         {
-            final Entity entity = citizen.getEntity().get();
-            final int entityId = entity == null ? 0 : entity.getId();
+            Log.getLogger().info("Setting stack in slot " + slot + " with stack " + stack + " for citizen " + name);
+            final Entity entity = citizen.getEntity().orElse(null);
+            Log.getLogger().info("Firing inventory event for stack " + stack + " for citizen " + name + " with entity " + entity.getId());
             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                    AbstractInventoryEvent.UpdateType.ADD, entityId);
+                    AbstractInventoryEvent.UpdateType.ADD, entity.getUUID());
             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(originalStack,
-                    AbstractInventoryEvent.UpdateType.REMOVE, entityId);
+                    AbstractInventoryEvent.UpdateType.REMOVE, entity.getUUID());
         }
     }
 
@@ -864,9 +877,14 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
     }
 
     @Override
-    public BlockPos getPos()
+    public InventoryId getInventoryId()
     {
-        return null;
+        if (citizen == null)
+        {
+            return null;
+        }
+
+        return new InventoryId(citizen.getUUID());
     }
 
     public void removeHeldItem(InteractionHand hand)

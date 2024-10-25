@@ -269,7 +269,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     protected boolean checkIfNeedsItem()
     {
-        Log.getLogger().info(worker.getName().getString() + ": checkIfNeedsItem");
         return getState() != INVENTORY_FULL &&
                  (this.building.hasOpenSyncRequest(worker.getCitizenData())
                     || this.building.hasCitizenCompletedRequestsToPickup(worker.getCitizenData()));
@@ -525,7 +524,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     private boolean waitingForSomething()
     {
-        Log.getLogger().info(worker.getName().getString() + ": waitingForSomething");
         if (delay > 0)
         {
             if (currentWorkingLocation != null && EntityUtils.isLivingAtSite(worker,
@@ -541,10 +539,8 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
             {
                 clearWorkTarget();
             }
-            Log.getLogger().info(worker.getName().getString() + ": waitingForSomething: true");
             return true;
         }
-        Log.getLogger().info(worker.getName().getString() + ": waitingForSomething: false");
         return false;
     }
 
@@ -578,8 +574,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
     @NotNull
     private IAIState lookForRequests()
     {
-        Log.getLogger().info(worker.getName().getString() + ": lookForRequests");
-        Log.getLogger().info(worker.getName().getString() + ": lookForRequests citizen: " + building.hasCitizenCompletedRequests(worker.getCitizenData()));
+        Log.getLogger().info(worker.getName().getString() + ": lookForRequests citizen completed requests: " + building.hasCitizenCompletedRequests(worker.getCitizenData()));
         Log.getLogger().info(worker.getName().getString() + ": lookForRequests building: " + building.hasOpenSyncRequest(worker.getCitizenData()));
         if (!this.building.hasOpenSyncRequest(worker.getCitizenData())
               && !building.hasCitizenCompletedRequests(worker.getCitizenData()))
@@ -589,7 +584,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         }
         if (building.hasCitizenCompletedRequests(worker.getCitizenData()))
         {
-            Log.getLogger().info("Found open citizen requests for " + worker.getName().getString());
+            Log.getLogger().info("Found completed requests for citizen " + worker.getName().getString());
             final Collection<IRequest<?>> completedRequests = building.getCompletedRequests(worker.getCitizenData());
             final List<IRequest<?>> deliverableRequests = new ArrayList<>();
             for (final IRequest<?> req : completedRequests)
@@ -644,10 +639,10 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                 {
                     matchers.add(new Matcher.Builder(delivery.getItem())
                         .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, delivery.getTag())
-                        .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, delivery.getCount())
+                        .compareCount(ItemCountType.USE_COUNT_AS_MINIMUM, delivery.getCount())
                         .build());
                     counts.add(delivery.getCount());
-                    countTypes.add(ItemCountType.MATCH_COUNT_EXACTLY);
+                    countTypes.add(ItemCountType.USE_COUNT_AS_MINIMUM);
                 }
 
                 List<Matcher> missing = worker.getInventory().findMissing(matchers);
@@ -656,7 +651,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                     missing = inv.findMissing(missing);
                 }
 
-                Log.getLogger().info("Missing: " + missing.size());
+                Log.getLogger().info("In LookForRequests: Number of outstanding requests to resolve: " + missing.size());
 
                 //Check if we either have the requested Items in our inventory or if they are in the building.
                 if (missing.isEmpty())
@@ -669,6 +664,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                         return NEEDS_ITEM;
                     }
 
+                    Log.getLogger().info("Transfering all items from resolved delivery request to worker inventory.");
                     InventoryUtils.transferWithPossibleSwap(worker.getInventory(), inv, matchers, counts, countTypes, itemStack -> {
                         final Matcher matcher = new Matcher.Builder(itemStack.getItem())
                                 .compareDamage(itemStack.getDamageValue())
@@ -682,6 +678,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                 }
                 else
                 {
+                    Log.getLogger().info("Actually, we need to re-request the items.");
                     //Seems like somebody else picked up our stack.
                     //Lets try this again.
                     if (async)
@@ -1057,7 +1054,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         if (building != null)
         {
             final Predicate<ItemStack> toolPredicate = stack -> ItemStackUtils.hasEquipmentLevel(stack, toolType, minimalLevel, building.getMaxEquipmentLevel());
-            for (final IInventory inventory : building.getInventories())
+            for (final IInventory inventory : building.getInventories(false))
             {
                 if (ModEquipmentTypes.none.get().equals(toolType))
                 {
@@ -1572,12 +1569,14 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     public boolean checkIfRequestForItemExistOrCreate(@NotNull final ItemStack stack, final int count, final int minCount)
     {
+        Log.getLogger().info("Checking if request exists for: " + stack.getDisplayName().getString());
         final Matcher matcher = new Matcher.Builder(stack.getItem())
             .compareDamage(stack.getDamageValue())
             .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, stack.getTag())
             .build();
         if (worker.getInventory().hasMatch(matcher))
         {
+            Log.getLogger().info("Already have the item in inventory: " + stack.getDisplayName().getString());
             return true;
         }
 
@@ -1586,6 +1585,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
               && building.getCompletedRequestsOfTypeFiltered(worker.getCitizenData(), TypeConstants.DELIVERABLE,
           (IRequest<? extends IDeliverable> r) -> r.getRequest().matches(stack)).isEmpty())
         {
+            Log.getLogger().info("No existing request, creating request for: " + stack.getDisplayName().getString());
             final Stack stackRequest = new Stack(stack, count, minCount);
             worker.getCitizenData().createRequest(stackRequest);
         }
@@ -1693,9 +1693,12 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     public boolean checkIfRequestForItemExistOrCreate(@NotNull final IDeliverable deliverable)
     {
+        Log.getLogger().info("Checking if request exists for: " + deliverable.getClass().getSimpleName());
         final int invCount = worker.getInventory().countMatches(deliverable::matches);
+        Log.getLogger().info("Inventory count: " + invCount);
         if (invCount >= deliverable.getCount())
         {
+            Log.getLogger().info("Already have full count in inventory: " + deliverable.getClass().getSimpleName());
             return true;
         }
         final int updatedCount = deliverable.getCount() - invCount;
@@ -1704,6 +1707,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         if (building.countMatches(deliverable::matches) >= updatedMinCount &&
             InventoryUtils.transfer(building, worker.getInventory(), deliverable::matches, updatedCount, ItemCountType.MATCH_COUNT_EXACTLY))
         {
+            Log.getLogger().info("Transfered from building to inventory: " + deliverable.getClass().getSimpleName());
             return true;
         }
 

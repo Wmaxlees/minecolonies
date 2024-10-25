@@ -2,6 +2,7 @@ package com.minecolonies.api.inventory.events;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import com.minecolonies.api.inventory.events.AbstractInventoryEvent.UpdateType;
 
@@ -41,13 +42,13 @@ public class InventoryEventManager
         fireInventoryEvent(event);
     }
 
-    public void fireInventoryEvent(ItemStack stack, UpdateType type, int entityId)
+    public void fireInventoryEvent(ItemStack stack, UpdateType type, final UUID entityId)
     {
         final AbstractInventoryEvent event = new EntityInventoryEvent(stack, type, entityId);
         fireInventoryEvent(event);
     }
 
-    public void fireClearEvent(int entityId)
+    public void fireClearEvent(final UUID entityId)
     {
         final AbstractInventoryEvent event = new EntityInventoryEvent(ItemStack.EMPTY, UpdateType.CLEAR, entityId);
         fireInventoryEvent(event);

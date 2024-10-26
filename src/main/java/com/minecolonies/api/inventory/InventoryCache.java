@@ -40,6 +40,7 @@ public final class InventoryCache implements IInventoryEventListener
 
     private void cache(final ItemStack stack, final InventoryId id)
     {
+        Log.getLogger().info("Caching " + stack + " to " + id);
         final Item item = stack.getItem();
 
         cache.computeIfAbsent(item, i -> new HashMap<>())
@@ -49,6 +50,7 @@ public final class InventoryCache implements IInventoryEventListener
 
     private void decache(final ItemStack stack, final InventoryId id)
     {
+        Log.getLogger().info("Decaching " + stack + " from " + id);
         final Item item = stack.getItem();
         final int count = stack.getCount();
 

@@ -17,7 +17,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.Nameable;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
@@ -400,6 +399,11 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
 
             if (ItemStackUtils.isEmpty(stack))
             {
+                if (citizen != null)
+                {
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack.copyWithCount(1),
+                            AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
+                }
                 freeSlots++;
             }
         }
@@ -424,6 +428,12 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
         if (!ItemStackUtils.isEmpty(stack))
         {
             stack.setCount(stack.getCount() - 1);
+
+            if (citizen != null)
+            {
+                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack.copyWithCount(1),
+                        AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
+            }
 
             if (ItemStackUtils.isEmpty(stack))
             {
@@ -710,6 +720,11 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
                     {
                         this.mainInventory.set(j, itemstack);
                         freeSlots--;
+                        if (citizen != null)
+                        {
+                            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(itemstack,
+                                    AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
+                        }
                     }
                 }
             }
@@ -746,11 +761,10 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
 
         if (citizen != null)
         {
-            final Entity entity = citizen.getEntity().orElse(null);
             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                    AbstractInventoryEvent.UpdateType.ADD, entity.getUUID());
+                    AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(originalStack,
-                    AbstractInventoryEvent.UpdateType.REMOVE, entity.getUUID());
+                    AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
         }
     }
 

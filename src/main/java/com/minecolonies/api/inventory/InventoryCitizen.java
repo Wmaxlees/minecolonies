@@ -391,6 +391,7 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
     public <T extends LivingEntity> boolean damageInventoryItem(final int slot, int amount, @Nullable T entityIn, @Nullable Consumer<T> onBroken)
     {
         final ItemStack stack = mainInventory.get(slot);
+        ItemStack originalStack = stack.copy();
         if (!ItemStackUtils.isEmpty(stack))
         {
             // The 4 parameter inner call from forge is for adding a callback to alter the damage caused,
@@ -401,7 +402,7 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
             {
                 if (citizen != null)
                 {
-                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack.copyWithCount(1),
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(originalStack,
                             AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
                 }
                 freeSlots++;
@@ -414,34 +415,6 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
     public void damageItemInHand(final InteractionHand hand, final int amount)
     {
         damageInventoryItem(getHeldItemSlot(hand), amount, citizen.getEntity().orElse(null), null);
-    }
-
-    /**
-     * Shrinks an item in the given slot
-     *
-     * @param slot slot to shrink
-     * @return true if item is empty afterwards
-     */
-    public boolean shrinkInventoryItem(final int slot)
-    {
-        final ItemStack stack = mainInventory.get(slot);
-        if (!ItemStackUtils.isEmpty(stack))
-        {
-            stack.setCount(stack.getCount() - 1);
-
-            if (citizen != null)
-            {
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack.copyWithCount(1),
-                        AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
-            }
-
-            if (ItemStackUtils.isEmpty(stack))
-            {
-                freeSlots++;
-            }
-        }
-
-        return ItemStackUtils.isEmpty(stack);
     }
 
     @Nonnull
@@ -761,10 +734,10 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
 
         if (citizen != null)
         {
-            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                    AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
             MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(originalStack,
                     AbstractInventoryEvent.UpdateType.REMOVE, citizen.getUUID());
+            MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
+                    AbstractInventoryEvent.UpdateType.ADD, citizen.getUUID());
         }
     }
 
@@ -903,13 +876,17 @@ public class InventoryCitizen extends InventoryItemHandler implements IItemHandl
         if (hand.equals(InteractionHand.MAIN_HAND))
         {
             this.mainItem = -1;
-            setStackInSlot(EquipmentSlot.MAINHAND.getIndex(), ItemStack.EMPTY);
-            citizen.getEntity().ifPresent(citizen -> citizen.markEquipmentDirty());
+            citizen.getEntity().ifPresent(citizen -> {
+                citizen.setItemSlot(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+                citizen.markEquipmentDirty();
+            });
             return;
         }
 
         this.offhandItem = -1;
-        setStackInSlot(EquipmentSlot.OFFHAND.getIndex(), ItemStack.EMPTY);
-        citizen.getEntity().ifPresent(citizen -> citizen.markEquipmentDirty());
+        citizen.getEntity().ifPresent(citizen -> {
+            citizen.setItemSlot(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+            citizen.markEquipmentDirty();
+        });
     }
 }

@@ -287,4 +287,19 @@ public class InventoryRack extends BlockEntity implements IInventory
         return proxy.getPercentFull();
     }
 
+    @Override
+    public void reloadCache()
+    {
+        proxy.reloadCache();
+    }
+
+    public InventoryId getInventoryId()
+    {
+        return proxy.getInventoryId();
+    }
+
+    public String getCacheDebugString()
+    {
+        return proxy.getCacheDebugString();
+    }
 }

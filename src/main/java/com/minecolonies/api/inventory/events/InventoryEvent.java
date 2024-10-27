@@ -1,9 +1,12 @@
 package com.minecolonies.api.inventory.events;
 
+import com.minecolonies.api.inventory.InventoryId;
+
 import net.minecraft.world.item.ItemStack;
 
-public abstract class AbstractInventoryEvent
+public final class InventoryEvent
 {
+    public final InventoryId inventoryId;
     public final ItemStack stack;
     
     public static enum UpdateType
@@ -15,9 +18,10 @@ public abstract class AbstractInventoryEvent
     }
     public final UpdateType type;
 
-    public AbstractInventoryEvent(final ItemStack stack, final UpdateType type)
+    public InventoryEvent(final ItemStack stack, final UpdateType type, final InventoryId inventoryId)
     {
         this.stack = stack;
         this.type = type;
+        this.inventoryId = inventoryId;
     }
 }

@@ -6,6 +6,7 @@ import com.minecolonies.core.commands.colonycommands.*;
 import com.minecolonies.core.commands.colonycommands.requestsystem.CommandRSReset;
 import com.minecolonies.core.commands.colonycommands.requestsystem.CommandRSResetAll;
 import com.minecolonies.core.commands.generalcommands.*;
+import com.minecolonies.core.commands.inventory.*;
 import com.minecolonies.core.commands.killcommands.*;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
@@ -76,6 +77,12 @@ public class EntryPoint
           .addNode(new CommandCitizenTriggerWalkTo().build())
           .addNode(new CommandCitizenTrack().build());
 
+        final CommandTree inventoryCommands = new CommandTree("inventory")
+          .addNode(new CommandCitizenCachePrint().build())
+          .addNode(new CommandBlockCachePrint().build())
+          .addNode(new CommandCitizenCacheReload().build())
+          .addNode(new CommandBlockCacheReload().build());
+
         /*
          * Root minecolonies command tree, all subtrees are added here.
          */
@@ -93,7 +100,8 @@ public class EntryPoint
           .addNode(new CommandResetPlayerSupplies().build())
           .addNode(new CommandHelp().build())
           .addNode(new ScanCommand().build())
-          .addNode(new CommandPruneWorld().build());
+          .addNode(new CommandPruneWorld().build())
+          .addNode(inventoryCommands);
 
         /*
          * Root minecolonies alias command tree, all subtrees are added here.
@@ -112,7 +120,8 @@ public class EntryPoint
           .addNode(new CommandBackup().build())
           .addNode(new CommandResetPlayerSupplies().build())
           .addNode(new CommandHelp().build())
-          .addNode(new CommandPruneWorld().build());
+          .addNode(new CommandPruneWorld().build())
+          .addNode(inventoryCommands);
 
         // Adds all command trees to the dispatcher to register the commands.
         dispatcher.register(minecoloniesRoot.build());

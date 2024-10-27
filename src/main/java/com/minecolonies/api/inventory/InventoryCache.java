@@ -13,12 +13,13 @@ import java.util.Set;
 import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.inventory.events.AbstractInventoryEvent;
-import com.minecolonies.api.inventory.events.BlockInventoryEvent;
-import com.minecolonies.api.inventory.events.EntityInventoryEvent;
+import com.minecolonies.api.inventory.events.InventoryEvent;
 import com.minecolonies.api.inventory.events.IInventoryEventListener;
 import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.Matcher;
+import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
+
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -29,43 +30,90 @@ public final class InventoryCache implements IInventoryEventListener
      * 
      * This map goes from Item -> ItemStack -> Inventory Position or Entity Id -> Count.
      */
-    private final Map<Item, Map<ItemStack, Map<InventoryId, Integer>>> cache = new HashMap<>();
+    private final Map<Item, Map<HashItemStack, Map<InventoryId, Integer>>> cache = new HashMap<>();
 
     private final Set<InventoryId> targets = new HashSet<>();
+
+    private final class HashItemStack
+    {
+        protected final ItemStack stack;
+
+        public HashItemStack(final ItemStack stack)
+        {
+            this.stack = stack.copyWithCount(1);
+        }
+
+        @Override
+        public int hashCode()
+        {
+            int hash = 19;
+            hash = 17 * hash + stack.getItem().hashCode();
+            hash = 17 * hash + stack.getDamageValue();
+
+            final Tag tag = stack.getTag();
+            hash = 17 * hash + (tag != null ? tag.hashCode() : 0);
+            
+            return hash;
+        }
+
+        @Override
+        public boolean equals(final Object obj)
+        {
+            if (!(obj instanceof HashItemStack other))
+            {
+                return false;
+            }
+
+            final Matcher matcher = new Matcher.Builder(stack.getItem())
+                .compareDamage(stack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.EXACT_MATCH, stack.getTag())
+                .build();
+
+            return matcher.match(other.stack);
+        }
+    }
 
     public InventoryCache()
     {
         MinecoloniesAPIProxy.getInstance().getInventoryEventManager().addListener(this);
     }
 
-    private void cache(final ItemStack stack, final InventoryId id)
+    public void cache(final ItemStack stack, final InventoryId id)
     {
         Log.getLogger().info("Caching " + stack + " to " + id);
         final Item item = stack.getItem();
+        final int count = stack.getCount();
+        final HashItemStack hashStack = new HashItemStack(stack);
+
+        if (!cache.containsKey(item))
+        {
+            cache.put(item, new HashMap<>());
+        }
 
         cache.computeIfAbsent(item, i -> new HashMap<>())
-             .computeIfAbsent(stack, s -> new HashMap<>())
-             .merge(id, stack.getCount(), Integer::sum);
+             .computeIfAbsent(hashStack, s -> new HashMap<>())
+             .merge(id, count, Integer::sum);
     }
 
-    private void decache(final ItemStack stack, final InventoryId id)
+    public void decache(final ItemStack stack, final InventoryId id)
     {
         Log.getLogger().info("Decaching " + stack + " from " + id);
         final Item item = stack.getItem();
         final int count = stack.getCount();
+        final HashItemStack hashStack = new HashItemStack(stack);
 
         if (!cache.containsKey(item))
         {
             return;
         }
 
-        final Map<ItemStack, Map<InventoryId, Integer>> stackMap = cache.get(item);
-        if (!stackMap.containsKey(stack))
+        final Map<HashItemStack, Map<InventoryId, Integer>> stackMap = cache.get(item);
+        if (!stackMap.containsKey(hashStack))
         {
             return;
         }
 
-        final Map<InventoryId, Integer> posMap = stackMap.get(stack);
+        final Map<InventoryId, Integer> posMap = stackMap.get(hashStack);
         if (!posMap.containsKey(id))
         {
             return;
@@ -77,7 +125,7 @@ public final class InventoryCache implements IInventoryEventListener
             posMap.remove(id);
             if (posMap.isEmpty())
             {
-                stackMap.remove(stack);
+                stackMap.remove(hashStack);
                 if (stackMap.isEmpty())
                 {
                     cache.remove(item);
@@ -103,9 +151,9 @@ public final class InventoryCache implements IInventoryEventListener
             return false;
         }
 
-        for (final ItemStack entry : cache.get(item).keySet())
+        for (final HashItemStack entry : cache.get(item).keySet())
         {
-            if (matcher.match(entry))
+            if (matcher.match(entry.stack))
             {
                 return true;
             }
@@ -123,9 +171,9 @@ public final class InventoryCache implements IInventoryEventListener
         }
 
         int count = 0;
-        for (final Map.Entry<ItemStack, Map<InventoryId, Integer>> entry : cache.get(item).entrySet())
+        for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> entry : cache.get(item).entrySet())
         {
-            if (matcher.match(entry.getKey()))
+            if (matcher.match(entry.getKey().stack))
             {
                 count += entry.getValue().values().stream().mapToInt(Integer::intValue).sum();
             }
@@ -142,11 +190,11 @@ public final class InventoryCache implements IInventoryEventListener
             return ItemStack.EMPTY;
         }
 
-        for (final ItemStack entry : cache.get(item).keySet())
+        for (final HashItemStack entry : cache.get(item).keySet())
         {
-            if (matcher.match(entry))
+            if (matcher.match(entry.stack))
             {
-                return entry;
+                return entry.stack;
             }
         }
 
@@ -162,11 +210,11 @@ public final class InventoryCache implements IInventoryEventListener
         }
 
         final List<ItemStack> result = new ArrayList<>();
-        for (final ItemStack entry : cache.get(item).keySet())
+        for (final HashItemStack entry : cache.get(item).keySet())
         {
-            if (matcher.match(entry))
+            if (matcher.match(entry.stack))
             {
-                result.add(entry);
+                result.add(entry.stack);
             }
         }
 
@@ -176,11 +224,11 @@ public final class InventoryCache implements IInventoryEventListener
     public Map<ItemStack, Integer> getAllItems()
     {
         final Map<ItemStack, Integer> result = new HashMap<>();
-        for (final Map<ItemStack, Map<InventoryId, Integer>> stackMap : cache.values())
+        for (final Map<HashItemStack, Map<InventoryId, Integer>> stackMap : cache.values())
         {
-            for (final Map.Entry<ItemStack, Map<InventoryId, Integer>> entry : stackMap.entrySet())
+            for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> entry : stackMap.entrySet())
             {
-                result.merge(entry.getKey(), entry.getValue().values().stream().mapToInt(Integer::intValue).sum(), Integer::sum);
+                result.merge(entry.getKey().stack, entry.getValue().values().stream().mapToInt(Integer::intValue).sum(), Integer::sum);
             }
         }
 
@@ -189,9 +237,9 @@ public final class InventoryCache implements IInventoryEventListener
 
     public boolean hasSimilar(@NotNull Item item)
     {
-        for (final Map.Entry<Item, Map<ItemStack, Map<InventoryId, Integer>>> entry : cache.entrySet())
+        for (final Item cachedItem : cache.keySet())
         {
-            if (IColonyManager.getInstance().getCompatibilityManager().getCreativeTab(new ItemStorage(item)) == IColonyManager.getInstance().getCompatibilityManager().getCreativeTab(new ItemStorage(entry.getKey())))
+            if (IColonyManager.getInstance().getCompatibilityManager().getCreativeTab(new ItemStorage(item)) == IColonyManager.getInstance().getCompatibilityManager().getCreativeTab(new ItemStorage(cachedItem)))
             {
                 return true;
             }
@@ -225,20 +273,9 @@ public final class InventoryCache implements IInventoryEventListener
     }
 
     @Override
-    public void onInventoryEvent(AbstractInventoryEvent event)
+    public void onInventoryEvent(InventoryEvent event)
     {
-        final InventoryId id;
-        if (event instanceof BlockInventoryEvent blockEvent) {
-            id = new InventoryId(blockEvent.pos);
-        }
-        else if (event instanceof EntityInventoryEvent entityEvent)
-        {
-            id = new InventoryId(entityEvent.entityId);
-        }
-        else
-        {
-            return;
-        }
+        final InventoryId id = event.inventoryId;
 
         if (!targets.contains(id))
         {
@@ -264,15 +301,15 @@ public final class InventoryCache implements IInventoryEventListener
     public void clear(final InventoryId id)
     {
         final List<Item> itemsToRemove = new ArrayList<>();
-        for (final Map.Entry<Item, Map<ItemStack, Map<InventoryId, Integer>>> stackMap : cache.entrySet())
+        for (final Map.Entry<Item, Map<HashItemStack, Map<InventoryId, Integer>>> stackMap : cache.entrySet())
         {
             final List<ItemStack> stacksToRemove = new ArrayList<>();
-            for (final Map.Entry<ItemStack, Map<InventoryId, Integer>> posMap : stackMap.getValue().entrySet())
+            for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> posMap : stackMap.getValue().entrySet())
             {
                 posMap.getValue().remove(id);
                 if (posMap.getValue().isEmpty())
                 {
-                    stacksToRemove.add(posMap.getKey());
+                    stacksToRemove.add(posMap.getKey().stack);
                 }
             }
             
@@ -293,6 +330,11 @@ public final class InventoryCache implements IInventoryEventListener
         }
     }
 
+    public void clear()
+    {
+        cache.clear();
+    }
+
     public void addTarget(final InventoryId id)
     {
         if (id == null)
@@ -301,5 +343,25 @@ public final class InventoryCache implements IInventoryEventListener
         }
 
         targets.add(id);
+    }
+
+    public String getDebugString()
+    {
+        String result = "";
+
+        for (final Map.Entry<Item, Map<HashItemStack, Map<InventoryId, Integer>>> stackMap : cache.entrySet())
+        {
+            result += stackMap.getKey() + ":\n";
+            for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> posMap : stackMap.getValue().entrySet())
+            {
+                result += "  " + posMap.getKey().stack.getDisplayName().getString() + ":\n";
+                for (final Map.Entry<InventoryId, Integer> entry : posMap.getValue().entrySet())
+                {
+                    result += "    " + entry.getKey() + ": " + entry.getValue() + "\n";
+                }
+            }
+        }
+
+        return result;
     }
 }

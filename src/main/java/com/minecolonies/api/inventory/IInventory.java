@@ -248,4 +248,10 @@ public interface IInventory
     boolean hasSimilar(Item item);
 
     float getPercentFull();
+
+    void reloadCache();
+
+    InventoryId getInventoryId();
+
+    String getCacheDebugString();
 }

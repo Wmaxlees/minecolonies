@@ -38,6 +38,7 @@ import com.minecolonies.api.colony.workorders.WorkOrderType;
 import com.minecolonies.api.crafting.ExactMatchItemStorage;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.inventory.IInventory;
+import com.minecolonies.api.inventory.InventoryId;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
 import com.minecolonies.api.util.*;
@@ -2438,5 +2439,32 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
         }
 
         return total / inventories.size();
+    }
+
+    @Override
+    public InventoryId getInventoryId()
+    {
+        return null;
+    }
+
+    @Override
+    public void reloadCache()
+    {
+        cache.clear();
+        for (final IInventory inventory : getInventories(false))
+        {
+            final List<ItemStack> allItems = ItemStackUtils.convertToMaxSizeItemStacks(inventory.getAllItems());
+            for (final ItemStack stack : allItems)
+            {
+                cache.cache(stack, inventory.getInventoryId());
+            }
+        }
+
+    }
+
+    @Override
+    public String getCacheDebugString()
+    {
+        return cache.getDebugString();
     }
 }

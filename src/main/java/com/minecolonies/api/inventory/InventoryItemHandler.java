@@ -27,14 +27,6 @@ public abstract class InventoryItemHandler implements IInventory
 {
     public abstract IItemHandler getItemHandler();
 
-    /**
-     * Get the position of the inventory if the inventory is part
-     * of a block or entity id if the inventory is part of an entity.
-     * 
-     * @return The position of the inventory or null.
-     */
-    public abstract InventoryId getInventoryId();
-
     protected InventoryCache cache;
 
     public void initCache()
@@ -280,5 +272,26 @@ public abstract class InventoryItemHandler implements IInventory
         }
 
         return (filledSlots / (float) getItemHandler().getSlots()) * 100.0f;
+    }
+
+    @Override
+    public void reloadCache()
+    {
+        cache.clear(getInventoryId());
+
+        for (int i = 0; i < getItemHandler().getSlots(); i++)
+        {
+            final ItemStack stack = getItemHandler().getStackInSlot(i);
+            if (!stack.isEmpty())
+            {
+                cache.cache(stack, getInventoryId());
+            }
+        }
+    }
+
+    @Override
+    public String getCacheDebugString()
+    {
+        return cache.getDebugString();
     }
 }

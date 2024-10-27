@@ -1,13 +1,9 @@
 package com.minecolonies.api.tileentities;
 
 import com.minecolonies.api.MinecoloniesAPIProxy;
-import com.minecolonies.api.colony.IColony;
-import com.minecolonies.api.colony.IColonyManager;
-import com.minecolonies.api.colony.buildings.IBuilding;
-import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
+import com.minecolonies.api.inventory.InventoryId;
 import com.minecolonies.api.inventory.InventoryRack;
-import com.minecolonies.api.inventory.events.AbstractInventoryEvent;
-import com.minecolonies.api.util.inventory.ItemStackUtils;
+import com.minecolonies.api.inventory.events.InventoryEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
@@ -82,10 +78,12 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
             {
                 this.stacks.set(slot, stack);
                 onContentsChanged(slot);
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                        AbstractInventoryEvent.UpdateType.ADD, getBlockPos());
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(previous,
-                        AbstractInventoryEvent.UpdateType.REMOVE, getBlockPos());
+                if (level != null && !level.isClientSide) {
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(previous,
+                            InventoryEvent.UpdateType.REMOVE, new InventoryId(getBlockPos()));
+                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
+                            InventoryEvent.UpdateType.ADD, new InventoryId(getBlockPos()));
+                }
             }
         }
 
@@ -99,7 +97,7 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
                 onContentsChanged(slot);
                 MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(
                         stack.copyWithCount(stack.getCount() - result.getCount()),
-                        AbstractInventoryEvent.UpdateType.ADD, getBlockPos());
+                        InventoryEvent.UpdateType.ADD, new InventoryId(getBlockPos()));
             }
             return result;
         }
@@ -112,7 +110,7 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
             {
                 onContentsChanged(slot);
                 MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                        AbstractInventoryEvent.UpdateType.REMOVE, getBlockPos());
+                        InventoryEvent.UpdateType.REMOVE, new InventoryId(getBlockPos()));
             }
             return stack;
         }

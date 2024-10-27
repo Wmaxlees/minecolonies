@@ -4,7 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import com.minecolonies.api.inventory.events.AbstractInventoryEvent.UpdateType;
+import com.minecolonies.api.inventory.InventoryId;
+import com.minecolonies.api.inventory.events.InventoryEvent.UpdateType;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
@@ -23,7 +24,7 @@ public class InventoryEventManager
         listeners.remove(listener);
     }
 
-    public void fireInventoryEvent(final AbstractInventoryEvent event)
+    public void fireInventoryEvent(final InventoryEvent event)
     {
         if (event.stack.isEmpty())
         {
@@ -36,27 +37,15 @@ public class InventoryEventManager
         }
     }
 
-    public void fireInventoryEvent(ItemStack stack, UpdateType type, BlockPos blockPos)
+    public void fireInventoryEvent(final ItemStack stack, final UpdateType type, final InventoryId inventoryId)
     {
-        final AbstractInventoryEvent event = new BlockInventoryEvent(stack, type, blockPos);
+        final InventoryEvent event = new InventoryEvent(stack, type, inventoryId);
         fireInventoryEvent(event);
     }
 
-    public void fireInventoryEvent(ItemStack stack, UpdateType type, final UUID entityId)
+    public void fireClearEvent(final InventoryId inventoryId)
     {
-        final AbstractInventoryEvent event = new EntityInventoryEvent(stack, type, entityId);
-        fireInventoryEvent(event);
-    }
-
-    public void fireClearEvent(final UUID entityId)
-    {
-        final AbstractInventoryEvent event = new EntityInventoryEvent(ItemStack.EMPTY, UpdateType.CLEAR, entityId);
-        fireInventoryEvent(event);
-    }
-
-    public void fireClearEvent(BlockPos blockPos)
-    {
-        final AbstractInventoryEvent event = new BlockInventoryEvent(ItemStack.EMPTY, UpdateType.CLEAR, blockPos);
+        final InventoryEvent event = new InventoryEvent(ItemStack.EMPTY, UpdateType.CLEAR, inventoryId);
         fireInventoryEvent(event);
     }
 }

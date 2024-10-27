@@ -74,7 +74,12 @@ public class TileEntityWareHouse extends AbstractTileEntityWareHouse
                 return;
             }
 
-            inv.insert(stack, false);
+            final Matcher matcher = new Matcher.Builder(stack.getItem())
+                .compareDamage(stack.getDamageValue())
+                .compareNBT(ItemNBTMatcher.EXACT_MATCH, stack.getTag())
+                .build();
+            final ItemStack toInsert = inventoryCitizen.extractStack(matcher, stack.getCount(), ItemCountType.USE_COUNT_AS_MAXIMUM, false);
+            inv.insert(toInsert, false);
         }
     }
 

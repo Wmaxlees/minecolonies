@@ -43,6 +43,7 @@ import com.minecolonies.core.colony.jobs.AbstractJob;
 import com.minecolonies.core.colony.jobs.JobDeliveryman;
 import com.minecolonies.core.colony.requestsystem.resolvers.StationRequestResolver;
 import com.minecolonies.core.entity.pathfinding.proxy.EntityCitizenWalkToProxy;
+import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityRack;
 import com.minecolonies.core.util.WorkerUtil;
 import com.mojang.authlib.GameProfile;
@@ -639,9 +640,9 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                 }
 
                 List<Matcher> missing = worker.getInventory().findMissing(matchers);
-                if (blockEntity instanceof IInventory inv)
+                if (blockEntity instanceof TileEntityColonyBuilding building)
                 {
-                    missing = inv.findMissing(missing);
+                    missing = building.getBuilding().findMissing(missing);
                 }
 
                 Log.getLogger().info("In LookForRequests: Number of outstanding requests to resolve: " + missing.size());
@@ -652,12 +653,12 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                     final List<ItemStack> niceToHave = itemsNiceToHave();
                     final List<ItemStack> contained = worker.getInventory().findMatches(matchers);
 
-                    if (!(blockEntity instanceof IInventory inv))
+                    if (!(blockEntity instanceof TileEntityColonyBuilding building))
                     {
                         return NEEDS_ITEM;
                     }
 
-                    InventoryUtils.transferWithPossibleSwap(inv, worker.getInventory(), matchers, counts, countTypes, itemStack -> {
+                    InventoryUtils.transferWithPossibleSwap(building, worker.getInventory(), matchers, counts, countTypes, itemStack -> {
                         final Matcher matcher = new Matcher.Builder(itemStack.getItem())
                                 .compareDamage(itemStack.getDamageValue())
                                 .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
@@ -671,6 +672,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                 else
                 {
                     Log.getLogger().info("Actually, we need to re-request the items.");
+                    missing.stream().forEach(matcher -> Log.getLogger().info("Missing: " + matcher.getTargetItem()));
                     //Seems like somebody else picked up our stack.
                     //Lets try this again.
                     if (async)

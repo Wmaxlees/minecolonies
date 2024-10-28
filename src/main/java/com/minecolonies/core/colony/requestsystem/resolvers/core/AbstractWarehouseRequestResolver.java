@@ -175,7 +175,7 @@ public abstract class AbstractWarehouseRequestResolver extends AbstractRequestRe
             totalAvailable -= ((INonExhaustiveDeliverable) request.getRequest()).getLeftOver();
         }
 
-        final List<ItemStack> inv = wareHouse.findMatches(itemStack -> request.getRequest().matches(itemStack));
+        final List<ItemStack> inv = wareHouse.getBuilding().findMatches(itemStack -> request.getRequest().matches(itemStack));
         for (final ItemStack stack : inv)
         {
             if (!stack.isEmpty())
@@ -223,7 +223,7 @@ public abstract class AbstractWarehouseRequestResolver extends AbstractRequestRe
 
         final int keep = completedRequest.getRequest() instanceof INonExhaustiveDeliverable ? ((INonExhaustiveDeliverable) completedRequest.getRequest()).getLeftOver() : 0;
 
-        final List<ItemStack> targetStacks = wareHouse.findMatches(itemStack -> completedRequest.getRequest().matches(itemStack));
+        final List<ItemStack> targetStacks = wareHouse.getBuilding().findMatches(itemStack -> completedRequest.getRequest().matches(itemStack));
         for (final ItemStack stack : targetStacks)
         {
             if (ItemStackUtils.isEmpty(stack))

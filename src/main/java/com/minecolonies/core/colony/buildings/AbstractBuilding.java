@@ -2147,7 +2147,9 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public int countMatches(Predicate<ItemStack> predicate)
     {
         int matches = 0;
-        for (final IInventory inventory : getInventories(false))
+        final List<IInventory> inventories = getInventories(false);
+        Log.getLogger().info("Counting matches in " + inventories.size() + " inventories.");
+        for (final IInventory inventory : inventories)
         {
             matches += inventory.countMatches(predicate);
         }

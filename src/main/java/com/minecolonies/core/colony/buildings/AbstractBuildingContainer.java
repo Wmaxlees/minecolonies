@@ -176,10 +176,14 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
                 }
             }
         }
-        else if (block instanceof IInventory)
+        else
         {
-            addContainerPosition(pos);
             final BlockEntity entity = world.getBlockEntity(pos);
+            if (entity instanceof IInventory)
+            {
+                addContainerPosition(pos);
+            }
+            
             if (entity instanceof TileEntityRack rackEntity)
             {
                 rackEntity.setBuildingPos(this.getID());

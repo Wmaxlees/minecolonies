@@ -1,5 +1,6 @@
 package com.minecolonies.core.colony.requestsystem.resolvers;
 
+import com.ldtteam.blockui.mod.Log;
 import com.minecolonies.api.colony.requestsystem.location.ILocation;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.requestable.IConcreteDeliverable;
@@ -29,6 +30,8 @@ public class WarehouseRequestResolver extends AbstractWarehouseRequestResolver
             return 0;
         }
 
-        return wareHouse.countMatches(itemStack -> requestToCheck.getRequest().matches(itemStack));
+        final int result = wareHouse.countMatches(itemStack -> requestToCheck.getRequest().matches(itemStack));
+        Log.getLogger().info("WarehouseRequestResolver.getWarehouseInternalCount: " + result);
+        return result;
     }
 }

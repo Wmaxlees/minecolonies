@@ -1,5 +1,6 @@
 package com.minecolonies.core.colony.requestsystem.resolvers;
 
+import com.ldtteam.blockui.mod.Log;
 import com.minecolonies.api.colony.requestsystem.location.ILocation;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.requestable.IConcreteDeliverable;
@@ -47,17 +48,23 @@ public class WarehouseConcreteRequestResolver extends AbstractWarehouseRequestRe
         int totalCount = 0;
         for (final ItemStack possible : ((IConcreteDeliverable) deliverable).getRequestedItems())
         {
-            final Matcher matcher = new Matcher.Builder(possible.getItem())
-                .compareDamage(possible.getDamageValue())
-                .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, possible.getTag())
-                .build();
+            final Matcher.Builder matcher = new Matcher.Builder(possible.getItem());
+            if (!ignoreDamage)
+            {
+                matcher.compareDamage(possible.getDamageValue());
+            }
+            if (!ignoreNBT)
+            {
+                matcher.compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, possible.getTag());
+            }
             if (requestToCheck.getRequest() instanceof INonExhaustiveDeliverable neDeliverable)
             {
-                totalCount += Math.max(0, wareHouse.countMatches(matcher) - neDeliverable.getLeftOver());
+                totalCount += Math.max(0, wareHouse.countMatches(matcher.build()) - neDeliverable.getLeftOver());
             }
             else
             {
-                totalCount += wareHouse.countMatches(matcher);
+                totalCount += wareHouse.countMatches(matcher.build());
+                Log.getLogger().info("WarehouseConcreteRequestResolver.getWarehouseInternalCount: totalCount = " + totalCount);
             }
 
             if (totalCount >= requestToCheck.getRequest().getCount())

@@ -472,11 +472,11 @@ public class EntityAIWorkDeliveryman extends AbstractEntityAIInteract<JobDeliver
                 .compareDamage(task.getRequest().getStack().getDamageValue())
                 .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, task.getRequest().getStack().getTag())
                 .build();
-            int totalCount = worker.getInventory().countMatches(itemStack -> ItemStackUtils.compareItemStack(matcher, itemStack));
+            int totalCount = worker.getInventory().countMatches(matcher);
             int hasCount = 0;
             for (final ItemStack stack : alreadyInInv)
             {
-                if (ItemStackUtils.compareItemStack(matcher, stack))
+                if (matcher.match(stack))
                 {
                     hasCount += stack.getCount();
                 }

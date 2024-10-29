@@ -3,6 +3,7 @@ package com.minecolonies.core.commands.inventory;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyManager;
 import com.minecolonies.api.inventory.IInventory;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.constant.translation.CommandTranslationConstants;
 import com.minecolonies.core.commands.commandTypes.IMCColonyOfficerCommand;
 import com.minecolonies.core.commands.commandTypes.IMCCommand;
@@ -53,10 +54,12 @@ public class CommandBlockCachePrint implements IMCColonyOfficerCommand
         final String debugString;
         if (blockEntity instanceof TileEntityColonyBuilding building)
         {
+            Log.getLogger().info("Block entity is a building.");
             debugString = building.getBuilding().getCacheDebugString();
         }
         else if (blockEntity instanceof IInventory inventory)
         {
+            Log.getLogger().info("Block entity is not a building but is an inventory.");
             debugString = inventory.getCacheDebugString();
         }
         else

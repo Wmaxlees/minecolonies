@@ -216,6 +216,11 @@ public abstract class AbstractWarehouseRequestResolver extends AbstractRequestRe
         final Colony colony = (Colony) manager.getColony();
         final TileEntityWareHouse wareHouse = (TileEntityWareHouse) colony.getBuildingManager().getBuilding(getLocation().getInDimensionLocation()).getTileEntity();
 
+        if (wareHouse == null)
+        {
+            return null;
+        }
+
         List<IRequest<?>> deliveries = Lists.newArrayList();
         int remainingCount = completedRequest.getRequest().getCount();
 

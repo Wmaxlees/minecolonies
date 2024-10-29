@@ -270,9 +270,11 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     protected boolean checkIfNeedsItem()
     {
-        return getState() != INVENTORY_FULL &&
+        final boolean result = getState() != INVENTORY_FULL &&
                  (this.building.hasOpenSyncRequest(worker.getCitizenData())
                     || this.building.hasCitizenCompletedRequestsToPickup(worker.getCitizenData()));
+        Log.getLogger().info(worker.getName().toString() + " needs item: " + result);
+        return result;
     }
 
     /**
@@ -309,8 +311,10 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     private IAIState getNeededItem()
     {
+        Log.getLogger().info("Getting needed item");
         if (needsCurrently == null)
         {
+            Log.getLogger().info("No needs currently");
             return getStateAfterPickUp();
         }
         else
@@ -318,6 +322,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
             if (walkTo == null)
             {
                 final BlockPos pos = building.getTileEntity().getPositionOfChestWithItemStack(needsCurrently.getA());
+                Log.getLogger().info("Setting walkto: " + pos);
                 if (pos == null)
                 {
                     return getStateAfterPickUp();
@@ -1756,13 +1761,17 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
 
     private boolean tryTransferFromPosToWorkerIfNeeded(final BlockPos pos, @NotNull final Tuple<Predicate<ItemStack>, Integer> predicate)
     {
+        Log.getLogger().info("Trying to transfer from pos to worker: " + predicate.getA().toString());
         final BlockEntity entity = world.getBlockEntity(pos);
         if (entity == null || !(entity instanceof IInventory inv))
         {
+            Log.getLogger().info("No inventory found at pos: " + pos.toString() + " " + entity);
             return true;
         }
 
+        Log.getLogger().info("Counting number of items citizen already has");
         int existingAmount = worker.getInventory().countMatches(predicate.getA());
+        Log.getLogger().info("Existing amount: " + existingAmount);
         int amount;
         if (predicate.getB() > existingAmount)
         {
@@ -1770,10 +1779,13 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         }
         else
         {
+            Log.getLogger().info("Worker already has items.");
             return true; // has already needed transfers...
         }
 
-        InventoryUtils.transfer(inv, worker.getInventory(), predicate.getA(), amount, ItemCountType.MATCH_COUNT_EXACTLY);
+        Log.getLogger().info("Transferring from pos to worker: " + predicate.getA().toString());
+        final boolean success = InventoryUtils.transfer(inv, worker.getInventory(), predicate.getA(), amount, ItemCountType.USE_COUNT_AS_MAXIMUM);
+        Log.getLogger().info("Transferred succeeded: " + success);
         existingAmount = worker.getInventory().countMatches(predicate.getA());
         // has already needed transfers...
         return existingAmount >= predicate.getB();

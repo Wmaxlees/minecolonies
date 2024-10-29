@@ -230,8 +230,10 @@ public class TileEntityColonyBuilding extends AbstractTileEntityColonyBuilding i
                     final BlockEntity entity = getLevel().getBlockEntity(pos);
                     if (entity instanceof IInventory inventory)
                     {
+                        Log.getLogger().info("Checking inventory at " + pos);
                         if (inventory.hasMatch(notEmptyPredicate))
                         {
+                            Log.getLogger().info("Found inventory at " + pos + " with match: " + inventory.findFirstMatch(notEmptyPredicate).getDisplayName().getString());
                             return pos;
                         }
                     }

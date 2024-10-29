@@ -78,12 +78,7 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
             {
                 this.stacks.set(slot, stack);
                 onContentsChanged(slot);
-                if (level != null && !level.isClientSide) {
-                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(previous,
-                            InventoryEvent.UpdateType.REMOVE, new InventoryId(getBlockPos()));
-                    MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                            InventoryEvent.UpdateType.ADD, new InventoryId(getBlockPos()));
-                }
+                refreshCaches();
             }
         }
 
@@ -95,9 +90,7 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
             if ((result.isEmpty() || result.getCount() < stack.getCount()) && !simulate)
             {
                 onContentsChanged(slot);
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(
-                        stack.copyWithCount(stack.getCount() - result.getCount()),
-                        InventoryEvent.UpdateType.ADD, new InventoryId(getBlockPos()));
+                refreshCaches();
             }
             return result;
         }
@@ -109,10 +102,23 @@ public abstract class AbstractTileEntityRack extends InventoryRack implements Me
             if (!stack.isEmpty() && !simulate)
             {
                 onContentsChanged(slot);
-                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
-                        InventoryEvent.UpdateType.REMOVE, new InventoryId(getBlockPos()));
+                refreshCaches();
             }
             return stack;
+        }
+    }
+
+    private void refreshCaches()
+    {
+        MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireClearEvent(new InventoryId(getBlockPos()));
+        for (int i = 0; i < getItemHandler().getSlots(); ++i)
+        {
+            final ItemStack stack = getItemHandler().getStackInSlot(i);
+            if (!stack.isEmpty())
+            {
+                MinecoloniesAPIProxy.getInstance().getInventoryEventManager().fireInventoryEvent(stack,
+                        InventoryEvent.UpdateType.ADD, new InventoryId(getBlockPos()));
+            }
         }
     }
 

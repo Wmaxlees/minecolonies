@@ -54,6 +54,21 @@ public class InventoryId
             return false;
         }
 
-        return invId.entityId == entityId && invId.pos == pos;
+        if (entityId != null)
+        {
+            return entityId.compareTo(invId.entityId) == 0;
+        }
+
+        if (pos != null)
+        {
+            return invId.pos.getX() == pos.getX() && invId.pos.getY() == pos.getY() && invId.pos.getZ() == pos.getZ();
+        }
+
+        return false;
+    }
+
+    public BlockPos getBlockPos()
+    {
+        return pos;
     }
 }

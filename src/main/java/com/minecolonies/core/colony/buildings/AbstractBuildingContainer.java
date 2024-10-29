@@ -1,7 +1,7 @@
 package com.minecolonies.core.colony.buildings;
 
-import com.ldtteam.blockui.mod.Log;
 import com.ldtteam.structurize.storage.StructurePacks;
+import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.blocks.AbstractBlockHut;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.buildings.IBuilding;
@@ -10,10 +10,10 @@ import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.inventory.InventoryCache;
 import com.minecolonies.api.inventory.InventoryId;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.core.tileentities.TileEntityRack;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
@@ -25,12 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
 import org.jetbrains.annotations.NotNull;
-
-import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 import java.util.function.Predicate;
@@ -48,7 +43,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
      */
     protected final Set<BlockPos> containerList = new HashSet<>();
 
-    protected final InventoryCache cache = new InventoryCache();
+    protected final InventoryCache cache;
 
     /**
      * List of items the worker should keep. With the quantity and if he should keep it in the inventory as well.
@@ -74,6 +69,8 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public AbstractBuildingContainer(final BlockPos pos, final IColony colony)
     {
         super(pos, colony);
+        cache = new InventoryCache(pos.toShortString());
+        MinecoloniesAPIProxy.getInstance().getInventoryEventManager().addListener(cache);
         cache.addTarget(new InventoryId(pos));
     }
 
@@ -134,6 +131,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     public void addContainerPosition(@NotNull final BlockPos pos)
     {
         containerList.add(pos);
+        Log.getLogger().info("Adding container for " + getBuildingType().getRegistryName() + " at " + pos);
         cache.addTarget(new InventoryId(pos));
     }
 
@@ -146,7 +144,7 @@ public abstract class AbstractBuildingContainer extends AbstractSchematicProvide
     @Override
     public List<BlockPos> getContainers()
     {
-        final List<BlockPos> list = new ArrayList<>(containerList);;
+        final List<BlockPos> list = new ArrayList<>(containerList);
         list.add(this.getPosition());
         return list;
     }

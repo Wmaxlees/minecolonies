@@ -26,7 +26,6 @@ import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.request.RequestState;
 import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.IRequestable;
-import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.requestable.deliveryman.Pickup;
 import com.minecolonies.api.colony.requestsystem.requester.IRequester;
 import com.minecolonies.api.colony.requestsystem.resolver.IRequestResolver;
@@ -39,6 +38,8 @@ import com.minecolonies.api.crafting.ExactMatchItemStorage;
 import com.minecolonies.api.crafting.ItemStorage;
 import com.minecolonies.api.inventory.IInventory;
 import com.minecolonies.api.inventory.InventoryId;
+import com.minecolonies.api.inventory.events.IInventoryEventListener;
+import com.minecolonies.api.inventory.events.InventoryEvent;
 import com.minecolonies.api.tileentities.AbstractTileEntityColonyBuilding;
 import com.minecolonies.api.tileentities.MinecoloniesTileEntities;
 import com.minecolonies.api.util.*;
@@ -61,7 +62,6 @@ import com.minecolonies.core.colony.requestsystem.requesters.BuildingBasedReques
 import com.minecolonies.core.colony.requestsystem.requests.StandardRequests;
 import com.minecolonies.core.colony.requestsystem.resolvers.BuildingRequestResolver;
 import com.minecolonies.core.colony.workorders.WorkOrderBuilding;
-import com.minecolonies.core.entity.ai.workers.service.EntityAIWorkDeliveryman;
 import com.minecolonies.core.entity.ai.workers.util.ConstructionTapeHelper;
 import com.minecolonies.core.tileentities.TileEntityColonyBuilding;
 import com.minecolonies.core.util.ChunkDataHelper;
@@ -90,7 +90,6 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.List;
 
 import static com.minecolonies.api.util.constant.BuildingConstants.CONST_DEFAULT_MAX_BUILDING_LEVEL;
 import static com.minecolonies.api.util.constant.BuildingConstants.NO_WORK_ORDER;
@@ -108,7 +107,7 @@ import static com.minecolonies.api.util.constant.TranslationConstants.*;
  * blocks.
  */
 @SuppressWarnings({"squid:S2390", "PMD.ExcessiveClassLength"})
-public abstract class AbstractBuilding extends AbstractBuildingContainer
+public abstract class AbstractBuilding extends AbstractBuildingContainer implements IInventoryEventListener
 {
     /**
      * Breeding setting.
@@ -175,6 +174,8 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
 
         this.requester = StandardFactoryController.getInstance().getNewInstance(TypeToken.of(BuildingBasedRequester.class), this);
         setupRsDataStore();
+        Log.getLogger().info("Should be registering a new building: " + this);
+        MinecoloniesAPIProxy.getInstance().getInventoryEventManager().addListener(this);
     }
 
     @Override
@@ -1189,6 +1190,8 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
             }
         }
 
+        Log.getLogger().info("Building: " + this.getBuildingType().getRegistryName() + " has " + containerList.size() + " containers");
+
         for (final BlockPos pos : containerList)
         {
             final BlockEntity tempTileEntity = colony.getWorld().getBlockEntity(pos);
@@ -2146,15 +2149,7 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     @Override
     public int countMatches(Predicate<ItemStack> predicate)
     {
-        int matches = 0;
-        final List<IInventory> inventories = getInventories(false);
-        Log.getLogger().info("Counting matches in " + inventories.size() + " inventories.");
-        for (final IInventory inventory : inventories)
-        {
-            matches += inventory.countMatches(predicate);
-        }
-
-        return matches;
+        return cache.countMatches(predicate);
     }
 
     @Override
@@ -2468,5 +2463,28 @@ public abstract class AbstractBuilding extends AbstractBuildingContainer
     public String getCacheDebugString()
     {
         return cache.getDebugString();
+    }
+
+    @Override
+    public void onInventoryEvent(final InventoryEvent event)
+    {
+        if (tileEntity == null)
+        {
+            return;
+        }
+
+        if (event.type != InventoryEvent.UpdateType.ADD)
+        {
+            return;
+        }
+
+        final BlockPos pos = event.inventoryId.getBlockPos();
+        if (pos == null || !getContainers().contains(pos))
+        {
+            return;
+        }
+
+        overruleNextOpenRequestWithStack(event.stack);
+        markDirty();
     }
 }

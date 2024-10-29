@@ -31,7 +31,7 @@ public abstract class InventoryItemHandler implements IInventory
 
     public void initCache()
     {
-        cache = new InventoryCache();
+        cache = new InventoryCache(getInventoryId().toString());
         cache.addTarget(getInventoryId());
     }
 

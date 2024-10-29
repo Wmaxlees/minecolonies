@@ -30,6 +30,7 @@ public class WarehouseRequestResolver extends AbstractWarehouseRequestResolver
             return 0;
         }
 
+        Log.getLogger().info("About to count warehouse matches.");
         final int result = wareHouse.countMatches(itemStack -> requestToCheck.getRequest().matches(itemStack));
         Log.getLogger().info("WarehouseRequestResolver.getWarehouseInternalCount: " + result);
         return result;

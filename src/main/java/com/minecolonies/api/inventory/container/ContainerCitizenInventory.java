@@ -103,7 +103,7 @@ public class ContainerCitizenInventory extends AbstractContainerMenu
         final BlockPos workBuilding;
 
         int workBuildingLevel = 0;
-        if (inv.player.level().isClientSide)
+        if (inv.player.level.isClientSide)
         {
             final ICitizenDataView data = ((IColonyView) colony).getCitizen(citizenId);
             this.entity = Optional.of(inv.player.level.getEntity(data.getEntityId()));

@@ -1,6 +1,5 @@
 package com.minecolonies.core.colony.requestsystem.resolvers;
 
-import com.ldtteam.blockui.mod.Log;
 import com.minecolonies.api.colony.requestsystem.location.ILocation;
 import com.minecolonies.api.colony.requestsystem.request.IRequest;
 import com.minecolonies.api.colony.requestsystem.requestable.IConcreteDeliverable;
@@ -8,8 +7,7 @@ import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.INonExhaustiveDeliverable;
 import com.minecolonies.api.colony.requestsystem.requestable.Stack;
 import com.minecolonies.api.colony.requestsystem.token.IToken;
-import com.minecolonies.api.crafting.ItemStorage;
-import com.minecolonies.api.util.inventory.InventoryUtils;
+import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 import com.minecolonies.core.colony.buildings.workerbuildings.BuildingWareHouse;
@@ -63,6 +61,7 @@ public class WarehouseConcreteRequestResolver extends AbstractWarehouseRequestRe
             }
             else
             {
+                Log.getLogger().info("WarehouseConcreteRequestResolver.getWarehouseInternalCount: About to count warehouse matches.");
                 totalCount += wareHouse.countMatches(matcher.build());
                 Log.getLogger().info("WarehouseConcreteRequestResolver.getWarehouseInternalCount: totalCount = " + totalCount);
             }

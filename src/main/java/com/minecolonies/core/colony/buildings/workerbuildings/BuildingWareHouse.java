@@ -7,7 +7,9 @@ import com.minecolonies.api.colony.ICitizenData;
 import com.minecolonies.api.colony.IColony;
 import com.minecolonies.api.colony.IColonyView;
 import com.minecolonies.api.colony.buildings.workerbuildings.IWareHouse;
+import com.minecolonies.api.colony.requestsystem.requestable.IDeliverable;
 import com.minecolonies.api.colony.requestsystem.resolver.IRequestResolver;
+import com.minecolonies.api.inventory.events.InventoryEvent;
 import com.minecolonies.api.tileentities.*;
 import com.minecolonies.api.util.constant.TypeConstants;
 import com.minecolonies.core.blocks.BlockMinecoloniesRack;
@@ -186,5 +188,23 @@ public class BuildingWareHouse extends AbstractBuilding implements IWareHouse
         {
             return new WindowHutMinPlaceholder<>(this);
         }
+    }
+
+    @Override
+    public void onInventoryEvent(final InventoryEvent event)
+    {
+        if (event.type != InventoryEvent.UpdateType.ADD)
+        {
+            return;
+        }
+
+        final BlockPos pos = event.inventoryId.getBlockPos();
+        if (pos == null|| !getContainers().contains(pos))
+        {
+            return;
+        }
+
+        colony.getRequestManager().onColonyUpdate(request -> request.getRequest() instanceof IDeliverable
+                && ((IDeliverable) request.getRequest()).matches(event.stack));
     }
 }

@@ -1,18 +1,17 @@
 package com.minecolonies.api.inventory.events;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.minecolonies.api.inventory.InventoryId;
 import com.minecolonies.api.inventory.events.InventoryEvent.UpdateType;
+import com.minecolonies.api.util.Log;
 
-import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 
 public class InventoryEventManager
 {
-    final List<IInventoryEventListener> listeners = new ArrayList<>();
+    final Set<IInventoryEventListener> listeners = ConcurrentHashMap.newKeySet();
 
     public void addListener(final IInventoryEventListener listener)
     {
@@ -26,7 +25,7 @@ public class InventoryEventManager
 
     public void fireInventoryEvent(final InventoryEvent event)
     {
-        if (event.stack.isEmpty())
+        if (event.stack.isEmpty() && event.type != UpdateType.CLEAR)
         {
             return;
         }

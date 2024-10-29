@@ -171,6 +171,7 @@ public class InventoryUtils
 
         if (sourceStacks.isEmpty())
         {
+            Log.getLogger().info("No items found to transfer.");
             return true;
         }
 

@@ -259,6 +259,7 @@ public final class ItemHandlerUtils
         int count = 0;
         for (final ItemStack stack : findMatches(itemHandler, itemStackSelectionPredicate))
         {
+            Log.getLogger().info("ItemHandlerUtils.countMatches: Found item " + stack.getDisplayName().getString());
             count += stack.getCount();
         }
         return count;

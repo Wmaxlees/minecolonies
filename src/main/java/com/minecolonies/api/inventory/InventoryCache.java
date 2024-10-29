@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import com.minecolonies.api.MinecoloniesAPIProxy;
 import com.minecolonies.api.colony.IColonyManager;
@@ -19,9 +20,12 @@ import com.minecolonies.api.util.Log;
 import com.minecolonies.api.util.inventory.Matcher;
 import com.minecolonies.api.util.inventory.params.ItemNBTMatcher;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 
 public final class InventoryCache implements IInventoryEventListener
 {
@@ -33,6 +37,8 @@ public final class InventoryCache implements IInventoryEventListener
     private final Map<Item, Map<HashItemStack, Map<InventoryId, Integer>>> cache = new HashMap<>();
 
     private final Set<InventoryId> targets = new HashSet<>();
+
+    private final String name;
 
     private final class HashItemStack
     {
@@ -73,14 +79,15 @@ public final class InventoryCache implements IInventoryEventListener
         }
     }
 
-    public InventoryCache()
+    public InventoryCache(final String name)
     {
         MinecoloniesAPIProxy.getInstance().getInventoryEventManager().addListener(this);
+        this.name = name;
     }
 
     public void cache(final ItemStack stack, final InventoryId id)
     {
-        Log.getLogger().info("Caching " + stack + " to " + id);
+        Log.getLogger().info(name + ": Caching " + stack + " to " + id);
         final Item item = stack.getItem();
         final int count = stack.getCount();
         final HashItemStack hashStack = new HashItemStack(stack);
@@ -97,7 +104,7 @@ public final class InventoryCache implements IInventoryEventListener
 
     public void decache(final ItemStack stack, final InventoryId id)
     {
-        Log.getLogger().info("Decaching " + stack + " from " + id);
+        Log.getLogger().info(name + ": Decaching " + stack + " from " + id);
         final Item item = stack.getItem();
         final int count = stack.getCount();
         final HashItemStack hashStack = new HashItemStack(stack);
@@ -272,6 +279,24 @@ public final class InventoryCache implements IInventoryEventListener
         return count;
     }
 
+    public int countMatches(Predicate<ItemStack> predicate)
+    {
+        int count = 0;
+
+        for (final Map<HashItemStack, Map<InventoryId, Integer>> stackMap : cache.values())
+        {
+            for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> entry : stackMap.entrySet())
+            {
+                if (predicate.test(entry.getKey().stack))
+                {
+                    count += entry.getValue().values().stream().mapToInt(Integer::intValue).sum();
+                }
+            }
+        }
+
+        return count;
+    }
+
     @Override
     public void onInventoryEvent(InventoryEvent event)
     {
@@ -300,20 +325,21 @@ public final class InventoryCache implements IInventoryEventListener
 
     public void clear(final InventoryId id)
     {
+        Log.getLogger().info(name + ": Clearing " + id);
         final List<Item> itemsToRemove = new ArrayList<>();
         for (final Map.Entry<Item, Map<HashItemStack, Map<InventoryId, Integer>>> stackMap : cache.entrySet())
         {
-            final List<ItemStack> stacksToRemove = new ArrayList<>();
+            final List<HashItemStack> stacksToRemove = new ArrayList<>();
             for (final Map.Entry<HashItemStack, Map<InventoryId, Integer>> posMap : stackMap.getValue().entrySet())
             {
                 posMap.getValue().remove(id);
                 if (posMap.getValue().isEmpty())
                 {
-                    stacksToRemove.add(posMap.getKey().stack);
+                    stacksToRemove.add(posMap.getKey());
                 }
             }
             
-            for (final ItemStack stack : stacksToRemove)
+            for (final HashItemStack stack : stacksToRemove)
             {
                 stackMap.getValue().remove(stack);
             }
@@ -347,7 +373,7 @@ public final class InventoryCache implements IInventoryEventListener
 
     public String getDebugString()
     {
-        String result = "";
+        String result = name + "------------------------:\n";
 
         for (final Map.Entry<Item, Map<HashItemStack, Map<InventoryId, Integer>>> stackMap : cache.entrySet())
         {

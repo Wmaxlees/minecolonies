@@ -90,9 +90,9 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
         };
 
         final int buildingCount = building.countMatches(pred);
-        final int workerCount = building.getCitizenForRequest(request.getId()).map(citizen -> citizen.getInventory().countMatches(pred)).orElse(0);
-        Log.getLogger().info("canResolveForBuilding -- Building count: " + buildingCount + " Worker count: " + workerCount + " Request: " + request.getRequest());
-        return buildingCount + workerCount >= request.getRequest().getMinimumCount();
+        // final int workerCount = building.getCitizenForRequest(request.getId()).map(citizen -> citizen.getInventory().countMatches(pred)).orElse(0);
+        // Log.getLogger().info("canResolveForBuilding -- Building count: " + buildingCount + " Worker count: " + workerCount + " Request: " + request.getRequest());
+        return buildingCount >= request.getRequest().getMinimumCount();
     }
 
     @Nullable
@@ -104,9 +104,9 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
     {
         final int totalRequested = request.getRequest().getCount();
         int totalAvailable = building.countMatches(itemStack -> request.getRequest().matches(itemStack));
-        totalAvailable += building.getCitizenForRequest(request.getId()).map(
-                citizen -> citizen.getInventory().countMatches(itemStack -> request.getRequest().matches(itemStack)))
-                .orElse(0);
+        // totalAvailable += building.getCitizenForRequest(request.getId()).map(
+        //         citizen -> citizen.getInventory().countMatches(itemStack -> request.getRequest().matches(itemStack)))
+        //         .orElse(0);
         Log.getLogger().info("attemptResolveForBuilding -- Total requested: " + totalRequested + " Total available: " + totalAvailable + " Request: " + request.getRequest());
         for (final Map.Entry<ItemStorage, Integer> reserved : building.reservedStacksExcluding(request).entrySet())
         {
@@ -142,7 +142,7 @@ public class BuildingRequestResolver extends AbstractBuildingDependentRequestRes
     public void resolveForBuilding(@NotNull final IRequestManager manager, @NotNull final IRequest<? extends IDeliverable> request, @NotNull final AbstractBuilding building)
     {
         Log.getLogger().info("resolveForBuilding -- Request: " + request.getRequest() + " Building: " + building);
-        final List<IInventory> inventories = building.getInventories(true);
+        final List<IInventory> inventories = building.getInventories(false);
 
         final int total = request.getRequest().getCount();
         int current = 0;

@@ -273,7 +273,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         final boolean result = getState() != INVENTORY_FULL &&
                  (this.building.hasOpenSyncRequest(worker.getCitizenData())
                     || this.building.hasCitizenCompletedRequestsToPickup(worker.getCitizenData()));
-        Log.getLogger().info(worker.getName().toString() + " needs item: " + result);
+        Log.getLogger().info(worker.getName().getString() + " needs item: " + result);
         return result;
     }
 
@@ -663,7 +663,9 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
                         return NEEDS_ITEM;
                     }
 
-                    InventoryUtils.transferWithPossibleSwap(building, worker.getInventory(), matchers, counts, countTypes, itemStack -> {
+                    Log.getLogger().info("Transfering with possible swap from building: " + building.getBuilding() + " to worker: " + worker.getName().getString());
+
+                    InventoryUtils.transferWithPossibleSwap(building.getBuilding(), worker.getInventory(), matchers, counts, countTypes, itemStack -> {
                         final Matcher matcher = new Matcher.Builder(itemStack.getItem())
                                 .compareDamage(itemStack.getDamageValue())
                                 .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, itemStack.getTag())
@@ -830,6 +832,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     public boolean checkAndTransferFromHut(@Nullable final ItemStack is)
     {
+        Log.getLogger().info("Checking and transferring from hut: " + is.getDisplayName().getString());
         final Matcher matcher = new Matcher.Builder(is.getItem())
             .compareDamage(is.getDamageValue())
             .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, is.getTag())
@@ -1033,14 +1036,17 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     private boolean checkForNeededTool(@NotNull final EquipmentTypeEntry toolType, final int minimalLevel)
     {
+        Log.getLogger().info("Checking for needed tool " + toolType.getDisplayName().getString() + " for " + worker.getName().getString());
         final int maxToolLevel = worker.getCitizenColonyHandler().getWorkBuilding().getMaxEquipmentLevel();
         final InventoryCitizen inventory = worker.getInventory();
         if (inventory.hasTool(toolType, minimalLevel, maxToolLevel))
         {
+            Log.getLogger().info("Worker already has tool. " + worker.getName().getString());
             return false;
         }
 
         delay += DELAY_RECHECK;
+        Log.getLogger().info("Worker does not have tool. " + worker.getName().getString());
         return walkToBuilding() || !retrieveToolInHut(toolType, minimalLevel);
     }
 
@@ -1053,6 +1059,7 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
      */
     public boolean retrieveToolInHut(final EquipmentTypeEntry toolType, final int minimalLevel)
     {
+        Log.getLogger().info("Retrieving tool " + toolType.getDisplayName().getString() + " in hut for " + worker.getName().getString());
         if (building != null)
         {
             final Predicate<ItemStack> toolPredicate = stack -> ItemStackUtils.hasEquipmentLevel(stack, toolType, minimalLevel, building.getMaxEquipmentLevel());

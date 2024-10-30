@@ -544,6 +544,7 @@ public class EntityAIWorkDeliveryman extends AbstractEntityAIInteract<JobDeliver
      */
     public boolean gatherIfInTileEntity(final BlockEntity entity, final ItemStack is)
     {
+        Log.getLogger().info("EntityAIWorkDeliveryman.gatherIfInTileEntity: entity = " + entity.getBlockPos() + ", is = " + is.getDisplayName().getString());
         if (ItemStackUtils.isEmpty(is))
         {
             return false;
@@ -553,16 +554,7 @@ public class EntityAIWorkDeliveryman extends AbstractEntityAIInteract<JobDeliver
             .compareDamage(is.getDamageValue())
             .compareNBT(ItemNBTMatcher.IMPORTANT_KEYS, is.getTag())
             .build();
-        final IInventory inventory;
-        if (entity instanceof TileEntityColonyBuilding buildingEntity)
-        {
-            inventory = buildingEntity.getBuilding();
-        }
-        else if (entity instanceof TileEntityRack rackEntity)
-        {
-            inventory = rackEntity;
-        }
-        else
+        if (!(entity instanceof IInventory inventory))
         {
             return false;
         }

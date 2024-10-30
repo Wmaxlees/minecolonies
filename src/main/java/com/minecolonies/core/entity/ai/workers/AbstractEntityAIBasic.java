@@ -273,7 +273,6 @@ public abstract class AbstractEntityAIBasic<J extends AbstractJob<?, J>, B exten
         final boolean result = getState() != INVENTORY_FULL &&
                  (this.building.hasOpenSyncRequest(worker.getCitizenData())
                     || this.building.hasCitizenCompletedRequestsToPickup(worker.getCitizenData()));
-        Log.getLogger().info(worker.getName().getString() + " needs item: " + result);
         return result;
     }
 

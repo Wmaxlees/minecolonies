@@ -192,7 +192,7 @@ public class TileEntityWareHouse extends AbstractTileEntityWareHouse
         final Matcher matcher = new Matcher.Builder(stack.getItem())
             .compareDamage(stack.getDamageValue())
             .compareNBT(ItemNBTMatcher.EXACT_MATCH, stack.getTag())
-            .compareCount(ItemCountType.MATCH_COUNT_EXACTLY, stack.getCount())
+            .compareCount(ItemCountType.USE_COUNT_AS_MAXIMUM, stack.getCount())
             .build();
         for (BlockPos pos : getBuilding().getContainers())
         {
